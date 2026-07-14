@@ -1,0 +1,24 @@
+# LetsCoding 打包（D3/M13.4）：
+# - asar: false —— Agent SDK 需 spawn 自带 cli.js，装进 asar 无法直接执行
+# - identity: null —— 本机免签名构建（自用 daily-driver；分发再议签名/公证）
+appId: com.letscoding.app
+productName: LetsCoding
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+asar: false
+npmRebuild: true
+# dmg 生成依赖联网拉 dmgbuild 工具链（本机网络对 github 不稳），产物用 zip + dir；
+# 需要 dmg 分发时再单独跑 `electron-builder --mac dmg`
+mac:
+  target:
+    - target: zip
+      arch:
+        - arm64
+    - target: dir
+      arch:
+        - arm64
+  identity: null
+  category: public.app-category.developer-tools

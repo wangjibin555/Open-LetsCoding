@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+.idea/
+.DS_Store
+*.log
+.env
+.env.*
+.claude/verify-logs/
+.cache/
+release/
+
+# 本地规划文档（决策账本 / spec / 实现步骤）——仅本地留存，不进公开仓库
+DECISIONS.md
+PLAN.md
+SPEC.md

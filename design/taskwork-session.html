@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8" />
+<title>TaskWork v2 · 任务即对话（定时会话不再进 Code 栏）</title>
+<style>
+  :root {
+    --page: #f3f4f7; --win: #ffffff; --panel: #f7f8fa; --raise: #eceef3;
+    --line: #d9dee7; --line-soft: #e7eaf0; --text: #1c2433; --mut: #5b6577;
+    --dim: #8b94a5; --acc: #b45309; --acc-fill: #ffb454; --acc-line: #e3b26b;
+    --ok: #15803d; --err: #dc2626; --info: #2563eb; --purple: #7c3aed;
+    --side: #eef0f5; --code-bg: #f2f4f8; --block-bg: #fafbfd; --code-fg: #3b4557;
+    --mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--page); color: var(--text);
+    font: 13px/1.55 -apple-system, 'PingFang SC', sans-serif;
+    display: flex; gap: 28px; padding: 28px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .frame {
+    width: 1280px; height: 780px; background: var(--win); border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden; display: flex; box-shadow: 0 24px 70px rgba(15,23,42,.10);
+  }
+
+  /* ── 左列（与现版一致，仅 Recents 行为变：点击在页内打开，不再跳 Code） ── */
+  .list { width: 268px; background: var(--side); border-right: 1px solid var(--line-soft); display: flex; flex-direction: column; }
+  .top { padding: 14px 14px 8px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .brand i { width: 14px; height: 14px; border-radius: 4px; background: var(--acc-fill); }
+  .tabs { display: flex; gap: 2px; background: rgba(28,36,51,.06); border-radius: 12px; padding: 3px; margin: 10px 0 2px; }
+  .tab { flex: 1; display: flex; justify-content: center; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; color: var(--mut); font-weight: 600; }
+  .tab .ic { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: -1.5px; }
+  .tab .sym { font-family: inherit; font-size: 15px; font-weight: 500; }
+  .tab.on { background: var(--win); border: 1px solid var(--line); color: var(--text); box-shadow: 0 1px 2px rgba(28,36,51,.06); }
+  .body { padding: 6px 10px; overflow: auto; flex: 1; }
+  .newbtn { width: 100%; padding: 7px; border: 1px dashed var(--line); border-radius: 9px; background: transparent; color: var(--mut); font: inherit; margin: 4px 0 10px; }
+  .grp { font-size: 10.5px; letter-spacing: .12em; color: var(--dim); font-weight: 700; margin: 8px 4px 6px; }
+  .jrow { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px; }
+  .jrow.on { background: var(--win); box-shadow: 0 1px 2px rgba(28,36,51,.06); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .jname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+  .jfreq { font-size: 11px; color: var(--dim); flex: none; }
+  .rrow { display: flex; align-items: center; gap: 7px; padding: 6px 9px; border-radius: 8px; font-size: 12.5px; color: var(--mut); }
+  .rrow .st { color: var(--ok); font-weight: 700; }
+  .rrow .when { margin-left: auto; font-size: 11px; color: var(--dim); flex: none; }
+
+  /* ── 中栏：任务头 + 会话流 + 页内续聊 ── */
+  .main { flex: 1; display: flex; flex-direction: column; background: var(--win); min-width: 0; }
+  .mhead { display: flex; align-items: center; gap: 10px; padding: 13px 20px; border-bottom: 1px solid var(--line-soft); }
+  .mhead .dot { width: 8px; height: 8px; }
+  .mhead .t { font-size: 14.5px; font-weight: 700; }
+  .badge { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); }
+  .badge.ro { color: var(--purple); border-color: #d8ccf1; background: #f6f2fd; }
+  .mhead .sp { flex: 1; }
+  .mini { font-size: 12px; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--win); color: var(--text); font-weight: 600; }
+  .mini.run { border-color: var(--acc-line); background: #fff8ec; color: var(--acc); }
+  .runbar { display: flex; align-items: center; gap: 8px; padding: 7px 20px; font-size: 12px; color: var(--mut); background: var(--block-bg); border-bottom: 1px solid var(--line-soft); }
+  .runbar b { color: var(--ok); font-weight: 700; }
+  .flow { flex: 1; overflow: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; }
+  .m-user { align-self: flex-end; max-width: 78%; background: var(--raise); border-radius: 12px 12px 4px 12px; padding: 9px 13px; font-size: 12.5px; color: var(--mut); }
+  .m-ai { max-width: 92%; font-size: 13.5px; }
+  .m-ai h3 { font-size: 13.5px; margin: 8px 0 4px; }
+  .m-ai ul { margin: 4px 0 4px 18px; }
+  .m-ai .hl { font-weight: 650; }
+  .m-tool { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--mut); background: var(--block-bg); border: 1px solid var(--line-soft); border-radius: 8px; padding: 4px 10px; width: fit-content; }
+  .m-tool .ed { font-weight: 700; color: var(--dim); font-size: 10px; }
+  .m-tool code { font-family: var(--mono); font-size: 11px; color: var(--code-fg); }
+  .m-status { font-size: 11.5px; color: var(--dim); text-align: center; }
+  .comp { border-top: 1px solid var(--line-soft); padding: 12px 20px 14px; }
+  .in { width: 100%; border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; font: inherit; color: var(--dim); background: var(--win); }
+  .comp-f { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--dim); }
+  .chip { border: 1px solid var(--line-soft); border-radius: 999px; padding: 2px 9px; }
+  .send { margin-left: auto; background: var(--acc-fill); border: none; border-radius: 9px; padding: 6px 14px; font: inherit; font-weight: 700; }
+
+  /* ── 右栏：Runs + 配置摘要 ── */
+  .rail { width: 284px; border-left: 1px solid var(--line-soft); background: var(--panel); padding: 14px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--win); border: 1px solid var(--line-soft); border-radius: 12px; padding: 12px 14px; }
+  .card .h { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; }
+  .card .h .n { margin-left: auto; color: var(--dim); font-weight: 500; font-size: 11px; }
+  .runrow { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px; font-size: 12.5px; }
+  .runrow.on { background: var(--raise); font-weight: 600; }
+  .runrow .st { font-weight: 800; color: var(--ok); font-size: 11px; }
+  .runrow .st.err { color: var(--err); }
+  .runrow .st.live { color: var(--info); }
+  .runrow .when { flex: 1; }
+  .runrow .tok { font-size: 10.5px; color: var(--dim); }
+  .kv { display: flex; font-size: 12px; padding: 4px 0; }
+  .kv .k { width: 76px; color: var(--dim); flex: none; }
+  .kv .v { color: var(--text); }
+  .edit { margin-top: 8px; width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--mut); font: inherit; font-size: 12px; }
+
+  .notes { width: 300px; font-size: 12.5px; color: var(--mut); }
+  .notes h2 { font-size: 14px; color: var(--text); margin: 0 0 10px; }
+  .notes h3 { font-size: 12.5px; color: var(--text); margin: 14px 0 6px; }
+  .notes li { margin: 4px 0 4px 16px; }
+  .notes .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #fff3e0; color: var(--acc); border: 1px solid var(--acc-line); }
+</style>
+<body>
+
+<div class="frame">
+  <!-- 左列 -->
+  <div class="list">
+    <div class="top">
+      <div class="brand"><i></i>LetsCoding</div>
+      <div class="tabs">
+        <div class="tab"><span class="ic">&lt;/&gt;</span></div>
+        <div class="tab on"><span class="sym">◷</span> TaskWork</div>
+        <div class="tab"><span class="sym">◇</span></div>
+      </div>
+    </div>
+    <div class="body">
+      <button class="newbtn">＋ 新建任务</button>
+      <div class="grp">SCHEDULED</div>
+      <div class="jrow on"><span class="dot"></span><span class="jname">每日晚间10点思考推进</span><span class="jfreq">每天</span></div>
+      <div class="jrow"><span class="dot"></span><span class="jname">每日早间10点询问</span><span class="jfreq">每天</span></div>
+      <div class="jrow"><span class="dot"></span><span class="jname">每日晚间11点核对今天工作量</span><span class="jfreq">每天</span></div>
+      <div class="jrow"><span class="dot"></span><span class="jname">每周日10点复盘周任务</span><span class="jfreq">每周</span></div>
+      <div class="jrow"><span class="dot"></span><span class="jname">每周日 20:00 的 My Life Plan 对焦</span><span class="jfreq">每周</span></div>
+      <div class="grp" style="margin-top:16px">RECENTS</div>
+      <div class="rrow"><span class="st">✓</span>每日早间10点询问 · 三天日记趋势…<span class="when">2 分钟前</span></div>
+      <div class="rrow"><span class="st">✓</span>每日晚间10点思考推进 · 最近一个里…<span class="when">2 小时前</span></div>
+    </div>
+  </div>
+
+  <!-- 中栏：任务即对话 -->
+  <div class="main">
+    <div class="mhead">
+      <span class="dot"></span>
+      <span class="t">每日晚间10点思考推进</span>
+      <span class="badge">每天 22:00</span>
+      <span class="badge ro">只读</span>
+      <span class="sp"></span>
+      <span class="mini">⚙ 配置</span>
+      <span class="mini run">▶ 立即运行</span>
+    </div>
+    <div class="runbar">正在看：<b>今天 22:00 的运行 ✓</b>&nbsp;· 2,143 tokens · 报告已写入 &nbsp;<span style="margin-left:auto">右栏可切历史运行</span></div>
+    <div class="flow">
+      <div class="m-user">读取今天有更新的会话与日记，围绕当前主线给出思考推进：1) 今天卡在哪；2) 明天最该动的一件事…</div>
+      <div class="m-tool"><span class="ed">READ</span><code>~/.claude/projects/…/2026-07-08 会话 ×6</code></div>
+      <div class="m-tool"><span class="ed">READ</span><code>日记 2026-07-06 → 07-08</code></div>
+      <div class="m-ai">
+        <h3>今晚的推进思考</h3>
+        <p><span class="hl">卡点：</span>「底座 vs 磨刀」的定性已连挂 3 天没有显式拍板——7/5 到 7/7 你实际用脚投票在建底座（LetsCoding 三个里程碑连发），但主线文档还没翻正这一拍。</p>
+        <ul>
+          <li><span class="hl">明天最该动的一件事：</span>把这句定性写进主线，一句话即可，不用展开。</li>
+          <li>M20 交互包已收口（权限全局化/Design 连贯性/打字机），建议明天开始回到五工作日日用验收节奏。</li>
+        </ul>
+        <p>收盘不用改格式——cap+明天一件事保持现状，周报 §4 一次对齐就行。</p>
+      </div>
+      <div class="m-status">本轮完成 · 14 步 · tokens 入 38.2k / 出 2.1k</div>
+    </div>
+    <div class="comp">
+      <div class="in">就这份报告继续问，或补充明天的约束…（⌘↵ 发送）</div>
+      <div class="comp-f"><span class="chip">续聊同一会话</span><span class="chip">自动执行 · 只读解除</span><button class="send">↵ 发送</button></div>
+    </div>
+  </div>
+
+  <!-- 右栏 -->
+  <div class="rail">
+    <div class="card">
+      <div class="h">Runs <span class="n">保留最近 30 次</span></div>
+      <div class="runrow on"><span class="st">✓</span><span class="when">今天 22:00</span><span class="tok">2.1k</span></div>
+      <div class="runrow"><span class="st">✓</span><span class="when">昨天 22:00</span><span class="tok">1.8k</span></div>
+      <div class="runrow"><span class="st">✓</span><span class="when">7月6日 22:01</span><span class="tok">2.4k</span></div>
+      <div class="runrow"><span class="st err">✕</span><span class="when">7月5日 22:00</span><span class="tok">—</span></div>
+      <div class="runrow"><span class="st">✓</span><span class="when">7月4日 22:00</span><span class="tok">1.9k</span></div>
+    </div>
+    <div class="card">
+      <div class="h">任务配置</div>
+      <div class="kv"><span class="k">周期</span><span class="v">每天 22:00</span></div>
+      <div class="kv"><span class="k">下次执行</span><span class="v">今天 22:00（4 小时后）</span></div>
+      <div class="kv"><span class="k">目录</span><span class="v">~/Desktop</span></div>
+      <div class="kv"><span class="k">模型</span><span class="v">跟随默认</span></div>
+      <div class="kv"><span class="k">错过补跑</span><span class="v">开</span></div>
+      <button class="edit">编辑配置 →</button>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <h2>TaskWork v2 · 任务即对话</h2>
+  <p>定时任务的报告会话<b>不再进 Code 左栏</b>（不再建「定时任务」分组）；任务在 TaskWork 页内自成闭环，对齐 Cowork 心智。</p>
+
+  <h3>中栏 = 选中任务的会话流</h3>
+  <li>默认显示<b>最新一次运行</b>的完整对话（指令 → 工具足迹 → 报告），复用 Design 对话列的轻量渲染。</li>
+  <li>正在运行时中栏 <b>live 流式</b>跟进（打字机同款），跑完自动定格。</li>
+  <li>底部可<b>就报告续聊</b>（同一会话 resume，续聊轮不受只读限制、权限照常走全局卡）。</li>
+
+  <h3>右栏 = Runs + 配置</h3>
+  <li>点任一 run 切换中栏回放；✓/✕/● 状态与 tokens 一眼可见。</li>
+  <li>配置从中栏移到右栏摘要卡，「编辑配置」展开完整表单（新建任务时中栏即表单，同现版）。</li>
+
+  <h3>数据层改动 <span class="tag">迁移</span></h3>
+  <li>cron 会话 init 不再归组进 Code 栏，改标记 <code>hidden</code>（Code 会话列表过滤掉）。</li>
+  <li>存量「定时任务」分组的会话一次性迁移为 hidden，分组消失。</li>
+  <li>Recents / Runs 点击均在页内打开，不再跳回 Code。</li>
+</div>
+
+</body>
+</html>
