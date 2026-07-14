@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>LetsCoding TaskWork 设计稿 v3 · Code / TaskWork 双模式 Tab</title>
+<style>
+  :root {
+    --page: #f3f4f7; --win: #ffffff; --panel: #f7f8fa; --raise: #eceef3;
+    --line: #d9dee7; --line-soft: #e7eaf0; --text: #1c2433; --mut: #5b6577;
+    --dim: #8b94a5; --acc: #b45309; --acc-fill: #ffb454; --acc-line: #e3b26b;
+    --ok: #15803d; --err: #dc2626; --info: #2563eb; --purple: #7c3aed;
+    --side: #eef0f5; --code-bg: #f2f4f8; --block-bg: #fafbfd; --code-fg: #3b4557;
+    --mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--page); color: var(--text);
+    font: 13px/1.55 -apple-system, 'PingFang SC', sans-serif;
+    display: flex; gap: 28px; padding: 28px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .notes { width: 280px; font-size: 12.5px; color: var(--mut); }
+  .notes h2 { font-size: 14px; color: var(--text); margin: 0 0 10px; }
+  .notes h3 { font-size: 12.5px; color: var(--text); margin: 14px 0 6px; }
+  .notes li { margin: 0 0 8px 16px; }
+  .notes b { color: var(--acc); }
+  .col { display: flex; flex-direction: column; gap: 20px; }
+  .cap { font-size: 11px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; font-weight: 650; margin-bottom: -12px; }
+
+  /* ============ 模式 Tab 栏（对齐 Claude Desktop 分段控件） ============ */
+  .mode-tabs {
+    display: flex; align-items: center; gap: 2px;
+    background: var(--raise); border-radius: 12px; padding: 4px; width: max-content;
+  }
+  .mtab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 9px; cursor: pointer;
+    font-size: 12.8px; font-weight: 650; color: var(--mut);
+  }
+  .mtab .ic { font-family: var(--mono); font-size: 11.5px; }
+  .mtab.on {
+    background: var(--win); color: var(--text);
+    border: 1px solid var(--line-soft); box-shadow: 0 1px 3px rgba(28,36,51,.10);
+  }
+  .mtab:not(.on) { padding: 5px 8px; }
+  .mtab:not(.on) .lab { display: none; }   /* 非激活只留图标，同截图 */
+
+  /* ============ ① Code 模式（现首页，仅顶部加 Tab） ============ */
+  .side { width: 232px; background: var(--side); border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px 8px; }
+  .side .mode-tabs { margin: 0 2px 10px; }
+  .s-btn { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; font-size: 12.8px; color: var(--text); cursor: pointer; }
+  .s-btn:hover { background: var(--raise); }
+  .s-btn.primary { font-weight: 650; }
+  .s-btn .ic { width: 15px; text-align: center; color: var(--mut); flex: none; }
+  .s-sep { height: 1px; background: var(--line-soft); margin: 8px 6px; }
+  .s-dim { padding: 4px 10px; font-size: 11px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; font-weight: 650; }
+  .card-s { background: var(--win); border: 1px solid var(--line-soft); border-radius: 9px; padding: 8px 10px; margin: 4px 2px; }
+  .c-title { font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .c-title .live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; box-shadow: 0 0 0 3px #15803d22; }
+  .c-title .auto { font-size: 9.5px; color: var(--info); background: #eef4ff; padding: 0 5px; border-radius: 8px; font-weight: 650; flex: none; }
+  .c-sub { font-size: 11px; color: var(--dim); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ============ ② TaskWork 模式（整页） ============ */
+  .app { width: 880px; height: 560px; background: var(--win); border: 1px solid var(--line-soft); border-radius: 14px; box-shadow: 0 12px 40px rgba(28,36,51,.12); display: flex; overflow: hidden; }
+  .cw-list { width: 246px; background: var(--panel); border-right: 1px solid var(--line-soft); padding: 12px 10px; display: flex; flex-direction: column; overflow: hidden; }
+  .cw-list .mode-tabs { margin: 0 0 12px; }
+  .new-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px; border-radius: 8px; border: 1px solid var(--acc-line); background: #fff8ec; color: var(--acc); font-size: 12.5px; font-weight: 650; cursor: pointer; margin-bottom: 12px; }
+  .grp { font-size: 10.5px; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; font-weight: 650; padding: 8px 6px 5px; }
+  .jrow { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 8px; cursor: pointer; min-width: 0; }
+  .jrow:hover { background: var(--raise); }
+  .jrow.on { background: var(--win); box-shadow: 0 1px 3px rgba(28,36,51,.08); }
+  .jdot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .jdot.off { background: var(--line); }
+  .jdot.running { box-shadow: 0 0 0 3px #15803d22; }
+  .jname { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jfreq { margin-left: auto; font-size: 10.5px; color: var(--dim); flex: none; }
+  .rrow { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 8px; cursor: pointer; min-width: 0; font-size: 12px; color: var(--mut); }
+  .rrow:hover { background: var(--raise); }
+  .rrow .ok-t { color: var(--ok); font-size: 10.5px; flex: none; }
+  .rrow .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rrow .when { margin-left: auto; font-size: 10.5px; color: var(--dim); flex: none; }
+
+  .cw-main { flex: 1; padding: 20px 24px; overflow: auto; background: var(--block-bg); }
+  .d-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .d-name { font-size: 17px; font-weight: 700; }
+  .badge { font-size: 10.5px; padding: 1px 8px; border-radius: 20px; font-weight: 600; }
+  .badge.sched { background: #eef4ff; color: var(--info); }
+  .badge.ro { background: #f0fdf4; color: var(--ok); }
+  .sw { width: 32px; height: 18px; border-radius: 10px; background: var(--acc-fill); position: relative; flex: none; cursor: pointer; }
+  .sw::after { content: ''; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .run-btn { margin-left: auto; padding: 6px 14px; border-radius: 8px; background: var(--acc-fill); color: #4a2c00; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .d-sub { font-size: 12px; color: var(--dim); margin-bottom: 16px; }
+
+  .card { background: var(--win); border: 1px solid var(--line-soft); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .card h4 { font-size: 11px; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; font-weight: 650; margin-bottom: 10px; }
+  .f-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+  .f-row:last-child { margin-bottom: 0; }
+  .f-lab { width: 64px; flex: none; font-size: 12px; color: var(--mut); }
+  .f-in { flex: 1; border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; font-size: 12.5px; background: var(--win); color: var(--text); }
+  .f-in.sm { flex: none; width: 90px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg span { padding: 5px 12px; font-size: 12px; color: var(--mut); cursor: pointer; }
+  .seg span.on { background: var(--raise); color: var(--text); font-weight: 650; }
+  .f-area { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 9px; font-size: 12px; font-family: var(--mono); color: var(--code-fg); background: var(--block-bg); min-height: 68px; line-height: 1.5; }
+  .preset { display: flex; gap: 8px; margin-top: 8px; }
+  .preset span { font-size: 11px; padding: 2px 9px; border-radius: 20px; background: var(--raise); color: var(--mut); cursor: pointer; }
+  .preset span:hover { color: var(--acc); }
+  .f-foot { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .f-hint { font-size: 11px; color: var(--dim); }
+  .save { margin-left: auto; padding: 5px 14px; border-radius: 8px; background: var(--raise); color: var(--text); font-weight: 650; font-size: 12px; cursor: pointer; }
+
+  .h-row { display: flex; align-items: center; gap: 10px; padding: 7px 4px; font-size: 12.3px; border-radius: 7px; cursor: pointer; min-width: 0; }
+  .h-row:hover { background: var(--raise); }
+  .h-row .st { flex: none; width: 14px; text-align: center; }
+  .h-row .st.ok { color: var(--ok); }
+  .h-row .st.run { color: var(--acc); }
+  .h-row .st.er { color: var(--err); }
+  .h-row .sum { color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h-row .when { margin-left: auto; flex: none; font-size: 11px; color: var(--dim); }
+  .h-row .go { flex: none; color: var(--info); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="notes">
+  <h2>TaskWork 设计稿 v3 · 双模式 Tab</h2>
+  <h3>本版改动</h3>
+  <ul>
+    <li>顶部<b>模式 Tab 栏</b>，对齐 Claude Desktop：激活项 = 白底胶囊「图标 + 文字」，非激活只留图标</li>
+    <li>两个模式：<b>&lt;/&gt; Code</b>（现首页原样）｜<b>◷ TaskWork</b>（定时任务整页）</li>
+    <li>Tab 栏固定在左列顶部，两个模式下位置不动，一键互切；替代 v2 的侧栏入口行</li>
+    <li>TaskWork 页内结构沿用 v2：新建 + Scheduled + Recents ｜ 主区配置卡 + 运行历史</li>
+  </ul>
+  <h3>不变</h3>
+  <ul>
+    <li>后端四层（cron_jobs / 调度器 / scheduled 只读模式 / IPC）原封不动</li>
+    <li>自动会话仍归 Code 模式左栏「定时任务」分组，两边都能进报告</li>
+  </ul>
+</div>
+
+<div class="col">
+  <div class="cap">① Code 模式（现首页，仅左栏顶部加 Tab 栏）</div>
+  <div class="side">
+    <div class="mode-tabs">
+      <div class="mtab on"><span class="ic">&lt;/&gt;</span><span class="lab">Code</span></div>
+      <div class="mtab"><span class="ic">◷</span><span class="lab">TaskWork</span></div>
+    </div>
+    <div class="s-btn primary"><span class="ic">＋</span>新建会话</div>
+    <div class="s-btn"><span class="ic">⚙</span>自定义</div>
+    <div class="s-sep"></div>
+    <div class="s-dim">▾ 定时任务 3</div>
+    <div class="card-s">
+      <div class="c-title"><span class="live"></span>每日复盘 · 7/8<span class="auto">自动</span></div>
+      <div class="c-sub">正在运行 · 21:30 触发</div>
+    </div>
+    <div class="s-dim" style="margin-top:6px">▸ 未分组 · 按目录 20</div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="cap">② TaskWork 模式（点 Tab 整页切换）</div>
+  <div class="app">
+    <div class="cw-list">
+      <div class="mode-tabs">
+        <div class="mtab"><span class="ic">&lt;/&gt;</span><span class="lab">Code</span></div>
+        <div class="mtab on"><span class="ic">◷</span><span class="lab">TaskWork</span></div>
+      </div>
+      <div class="new-btn">＋ 新建任务</div>
+      <div class="grp">Scheduled</div>
+      <div class="jrow on"><span class="jdot running"></span><span class="jname">每日复盘</span><span class="jfreq">每天</span></div>
+      <div class="jrow"><span class="jdot"></span><span class="jname">周报汇总</span><span class="jfreq">每周</span></div>
+      <div class="jrow"><span class="jdot off"></span><span class="jname">待办盘点</span><span class="jfreq">每4时</span></div>
+      <div class="grp" style="margin-top:10px">Recents</div>
+      <div class="rrow"><span class="ok-t">✓</span><span class="txt">每日复盘 · 7/8</span><span class="when">21:30</span></div>
+      <div class="rrow"><span class="ok-t">✓</span><span class="txt">每日复盘 · 7/7</span><span class="when">昨天</span></div>
+      <div class="rrow"><span class="ok-t">✓</span><span class="txt">周报汇总 · 第27周</span><span class="when">7/4</span></div>
+    </div>
+
+    <div class="cw-main">
+      <div class="d-head">
+        <span class="d-name">每日复盘</span>
+        <span class="badge sched">每天 21:30</span>
+        <span class="badge ro">只读</span>
+        <div class="sw"></div>
+        <div class="run-btn">▶ 立即运行</div>
+      </div>
+      <div class="d-sub">上次运行 今天 21:30 · 下次 明天 21:30 · 目录 ~/Desktop/LetsCoding</div>
+
+      <div class="card">
+        <h4>配置</h4>
+        <div class="f-row">
+          <div class="f-lab">名称</div>
+          <input class="f-in" value="每日复盘" />
+          <div class="f-lab" style="width:auto">模型</div>
+          <input class="f-in sm" style="width:150px" value="跟随默认模型" />
+        </div>
+        <div class="f-row">
+          <div class="f-lab">周期</div>
+          <div class="seg"><span class="on">每天</span><span>每周</span><span>每 N 小时</span></div>
+          <input class="f-in sm" value="21:30" />
+          <label style="font-size:11.5px;color:var(--mut);margin-left:auto"><input type="checkbox" checked /> 错过补跑</label>
+        </div>
+        <div class="f-row">
+          <div class="f-lab">目录</div>
+          <input class="f-in" value="~/Desktop/LetsCoding" />
+        </div>
+        <div class="f-row" style="align-items:flex-start">
+          <div class="f-lab" style="margin-top:6px">任务指令</div>
+          <div style="flex:1">
+            <textarea class="f-area">读取 ~/.claude/projects 下今天有更新的会话记录（限定上面的目录），总结：1) 今天做了什么、合并了什么；2) 踩了什么坑、怎么解决的；3) 未完成的待办和明天建议。控制在 500 字内。</textarea>
+            <div class="preset"><span>预设：每日复盘</span><span>周报汇总</span><span>待办盘点</span></div>
+          </div>
+        </div>
+        <div class="f-foot">
+          <span class="f-hint">只读执行 · 上限 50 轮 · 每次运行消耗真实 token</span>
+          <span class="save">保存</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>运行历史</h4>
+        <div class="h-row"><span class="st run">●</span><span class="sum">正在运行…（第 12 轮）</span><span class="when">今天 21:30</span><span class="go">查看 ↗</span></div>
+        <div class="h-row"><span class="st ok">✓</span><span class="sum">今天合并了 M17 四项功能，右栏新增待办、子 Agent…</span><span class="when">7/7 21:30</span><span class="go">打开会话 ↗</span></div>
+        <div class="h-row"><span class="st ok">✓</span><span class="sum">修复 ABI 竞态根因；rail 重设计过验收…</span><span class="when">7/6 21:30</span><span class="go">打开会话 ↗</span></div>
+        <div class="h-row"><span class="st er">✕</span><span class="sum">网关超时，未产出报告（可点立即运行重试）</span><span class="when">7/5 21:30</span><span class="go">打开会话 ↗</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,670 @@
+<title>LetsCoding · 前端设计稿</title>
+<style>
+:root{
+  --page:#0C0E13;
+  --win:#12151D;
+  --panel:#171B24;
+  --raise:#1E2430;
+  --line:#262D3A;
+  --line-soft:#1C222D;
+  --text:#E7EAF1;
+  --mut:#97A0B3;
+  --dim:#5C6577;
+  --acc:#FFB454;
+  --acc-soft:rgba(255,180,84,.13);
+  --ok:#62C98D;
+  --ok-soft:rgba(98,201,141,.13);
+  --err:#F0716B;
+  --err-soft:rgba(240,113,107,.12);
+  --info:#6CB2F5;
+  --info-soft:rgba(108,178,245,.13);
+  --purple:#A78BFA;
+  --purple-soft:rgba(167,139,250,.13);
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--page);
+  color:var(--text);
+  font-family:-apple-system,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.deck{max-width:1340px;margin:0 auto;padding:44px 32px 90px;display:flex;flex-direction:column;gap:26px}
+
+/* ---------- deck header ---------- */
+.deck-head{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--acc);text-transform:uppercase}
+.deck-head h1{font-size:27px;font-weight:700;margin:0;letter-spacing:.01em;text-wrap:balance}
+.deck-sub{color:var(--mut);max-width:66ch;margin:0}
+.deck-meta{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.deck-meta b{color:var(--mut);font-weight:500}
+
+/* ---------- screen tabs ---------- */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tab{
+  appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--mut);
+  font:inherit;font-size:13px;padding:7px 16px;border-radius:8px;cursor:pointer;
+}
+.tab:hover{color:var(--text);border-color:#33405299}
+.tab.on{background:var(--acc-soft);border-color:#8a6a3a;color:var(--acc)}
+.tab:focus-visible,.mini:focus-visible,.jump:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tab-hint{font-size:12px;color:var(--dim);margin-left:6px}
+
+/* ---------- window chrome ---------- */
+.stage{overflow-x:auto;padding-bottom:6px}
+.win{
+  width:1250px;border-radius:12px;border:1px solid var(--line);background:var(--win);
+  box-shadow:0 34px 90px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.4);overflow:hidden;
+}
+.titlebar{height:42px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line-soft);background:#10131A}
+.dots{display:flex;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot.r{background:#FF5F57}.dot.y{background:#FEBC2E}.dot.g{background:#28C840}
+.tb-title{flex:1;text-align:center;font-size:12.5px;color:var(--dim);font-family:var(--mono)}
+.tb-pad{width:52px}
+
+/* ---------- generic bits ---------- */
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:6px;border:1px solid var(--line);background:var(--raise);font-size:12px;color:var(--mut);white-space:nowrap}
+.chip code,.mono{font-family:var(--mono);font-size:11.5px}
+.pdot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}
+.pdot.an{background:#D97757}.pdot.oa{background:#74AA9C}.pdot.ds{background:#4D6BFE}.pdot.qw{background:#8B5CF6}
+.mini{
+  appearance:none;border:1px solid var(--line);background:var(--raise);color:var(--mut);
+  font:inherit;font-size:12px;padding:3px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;
+}
+.mini:hover{color:var(--text)}
+.mini.acc{background:var(--acc);border-color:var(--acc);color:#1A1200;font-weight:600}
+.mini.acc:hover{background:#ffc16e;color:#1A1200}
+.st{width:8px;height:8px;border-radius:50%;flex:none;margin-top:7px}
+.st.run{background:var(--ok)}
+.st.wait{background:var(--acc)}
+.st.idle{background:#3A4252}
+@media (prefers-reduced-motion:no-preference){
+  .st.run{animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(98,201,141,.5)}55%{box-shadow:0 0 0 5px rgba(98,201,141,0)}}
+  .spin{animation:rot 1s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+}
+.spin{width:12px;height:12px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--ok);flex:none}
+
+/* ---------- screens ---------- */
+.screen{display:none}
+.screen.on{display:block}
+
+/* ================= workbench ================= */
+.wb{display:flex;height:704px;position:relative}
+.side{width:264px;flex:none;border-right:1px solid var(--line-soft);display:flex;flex-direction:column;background:#131720}
+.side-top{padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;letter-spacing:.01em}
+.brand i{width:9px;height:9px;border-radius:3px;background:var(--acc);flex:none;box-shadow:0 0 10px rgba(255,180,84,.45)}
+.newbtn{
+  appearance:none;width:100%;border:1px solid #8a6a3a;background:var(--acc-soft);color:var(--acc);
+  font:inherit;font-size:13px;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer;
+}
+.newbtn:hover{background:rgba(255,180,84,.2)}
+.search{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:7px;padding:5px 10px;color:var(--dim);font-size:12.5px;background:var(--win)}
+.side-scroll{flex:1;overflow:hidden;padding:2px 8px 8px;display:flex;flex-direction:column;gap:2px}
+.grp{
+  display:flex;align-items:center;gap:6px;padding:7px 8px 3px;font-size:11px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);
+}
+.grp .cnt{margin-left:auto;color:var(--dim)}
+.grp .cv{color:var(--dim);font-size:9px}
+.sess{display:flex;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer}
+.sess:hover{background:var(--raise)}
+.sess.on{background:var(--raise);box-shadow:inset 2px 0 0 var(--acc)}
+.sess-t{font-size:13px;line-height:1.35;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
+.sess-m{font-size:11.5px;color:var(--dim);display:flex;gap:5px;align-items:center;white-space:nowrap}
+.sess-m .mn{color:var(--mut)}
+.side-foot{border-top:1px solid var(--line-soft);padding:10px 14px;display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.foot-row{display:flex;align-items:center;gap:8px;color:var(--mut);cursor:pointer;border-radius:6px}
+.foot-row:hover{color:var(--text)}
+.foot-row .k{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.jump{appearance:none;background:none;border:none;padding:0;font:inherit;text-align:left;width:100%}
+.conn{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+
+/* main pane */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.sess-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line-soft)}
+.sh-title{font-size:15px;font-weight:600;white-space:nowrap}
+.sh-chips{display:flex;gap:7px;align-items:center;overflow:hidden}
+.sh-right{margin-left:auto;display:flex;gap:7px;align-items:center}
+.flow{flex:1;overflow:hidden;padding:18px 22px;display:flex;flex-direction:column;gap:14px}
+.msg-u{
+  align-self:flex-end;max-width:72%;background:var(--raise);border:1px solid var(--line);
+  border-radius:12px 12px 4px 12px;padding:9px 14px;font-size:13.5px;
+}
+.msg-a{max-width:86%;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.msg-a p{margin:0;color:var(--text)}
+.tool{
+  display:flex;align-items:center;gap:9px;border:1px solid var(--line-soft);background:#141821;
+  border-radius:7px;padding:5px 11px;font-size:12px;color:var(--mut);width:fit-content;max-width:100%;
+}
+.tool code{font-family:var(--mono);font-size:11.5px;color:#B9C2D4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tico{font-family:var(--mono);color:var(--acc);font-size:11px;flex:none}
+.tres{color:var(--dim);flex:none;font-size:11.5px}
+.diff{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#11141B}
+.dh{font-family:var(--mono);font-size:11.5px;color:var(--mut);padding:7px 13px;border-bottom:1px solid var(--line-soft);display:flex;gap:10px;align-items:center}
+.dh .badge{font-size:10px;padding:1px 7px;border-radius:5px;background:var(--acc-soft);color:var(--acc);letter-spacing:.05em}
+.diff pre{margin:0;padding:9px 0;font-family:var(--mono);font-size:12px;line-height:1.75;overflow-x:auto}
+.diff pre span{display:block;padding:0 14px;white-space:pre}
+.ctx{color:#7E8798}
+.del{background:var(--err-soft);color:#F1A5A1}
+.add{background:var(--ok-soft);color:#9ADFB8}
+.mem-ev{
+  display:flex;align-items:center;gap:11px;border:1px dashed #8a6a3a;background:var(--acc-soft);
+  border-radius:9px;padding:9px 14px;font-size:12.5px;max-width:86%;
+}
+.mem-ev .mv-ico{color:var(--acc);font-size:14px;flex:none}
+.mem-ev b{font-weight:600}
+.mem-ev .mv-body{flex:1;min-width:0;color:var(--mut)}
+.mem-ev .mv-body b{color:var(--text)}
+.runline{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:12.5px}
+.runline code{font-family:var(--mono);font-size:11.5px;color:#B9C2D4}
+.composer{padding:14px 18px 16px;border-top:1px solid var(--line-soft)}
+.cbox{border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:hidden}
+.cbox:focus-within{border-color:#8a6a3a}
+.cinput{padding:11px 15px;color:var(--dim);font-size:13.5px;min-height:44px}
+.cbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--line-soft)}
+.cbar .sp{flex:1}
+.send{
+  appearance:none;border:none;background:var(--acc);color:#1A1200;font:inherit;font-size:12.5px;
+  font-weight:700;padding:5px 16px;border-radius:7px;cursor:pointer;
+}
+.send:hover{background:#ffc16e}
+
+/* right rail */
+.rail{width:250px;flex:none;border-left:1px solid var(--line-soft);background:#131720;padding:14px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.rail h4{margin:0;font-size:11px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.rail-grp{display:flex;flex-direction:column;gap:7px}
+.rl{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mut)}
+.rl .ok-t{color:var(--ok);font-size:11px;flex:none}
+.rl code{font-family:var(--mono);font-size:11px;color:#B9C2D4}
+.mem-card{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel);display:flex;flex-direction:column;gap:3px}
+.mem-card .mc-name{font-family:var(--mono);font-size:11px;color:var(--text)}
+.mem-card .mc-desc{font-size:11.5px;color:var(--dim);line-height:1.5}
+.ttag{font-size:10px;padding:1px 7px;border-radius:5px;width:fit-content;letter-spacing:.04em}
+.ttag.user{background:var(--info-soft);color:var(--info)}
+.ttag.feedback{background:var(--purple-soft);color:var(--purple)}
+.ttag.project{background:var(--ok-soft);color:var(--ok)}
+.ttag.reference{background:#28303F;color:var(--mut)}
+.skills{display:flex;flex-wrap:wrap;gap:5px}
+.skills .chip{padding:1px 8px;font-size:11px}
+
+/* ================= modal (new session) ================= */
+.overlay{position:absolute;inset:0;background:rgba(7,9,13,.66);display:none;align-items:center;justify-content:center;z-index:5}
+.wb.modal-on .overlay{display:flex}
+.modal{width:600px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden}
+.modal-h{padding:16px 22px 0;display:flex;flex-direction:column;gap:2px}
+.modal-h h3{margin:0;font-size:16px}
+.modal-h p{margin:0;font-size:12px;color:var(--dim)}
+.modal-b{padding:16px 22px;display:flex;flex-direction:column;gap:16px}
+.fld{display:flex;flex-direction:column;gap:7px}
+.fld label{font-size:11px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.dirbox{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--win)}
+.dirbox code{font-family:var(--mono);font-size:12px;color:var(--text);flex:1}
+.dirbox .cv{color:var(--dim);font-size:10px}
+.recents{display:flex;gap:6px;flex-wrap:wrap}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mcard{border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:var(--win);display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.mcard.on{border-color:#8a6a3a;background:var(--acc-soft)}
+.mc-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+.mc-top .tag{margin-left:auto;font-size:10px;padding:1px 7px;border-radius:5px;background:var(--acc);color:#1A1200;font-weight:700}
+.mc-sub{font-size:11.5px;color:var(--dim)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:fit-content}
+.seg span{padding:6px 16px;font-size:12.5px;color:var(--mut);border-right:1px solid var(--line);cursor:pointer}
+.seg span:last-child{border-right:none}
+.seg span.on{background:var(--acc-soft);color:var(--acc)}
+.checks{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--mut)}
+.ck{display:flex;align-items:center;gap:6px}
+.ck i{width:14px;height:14px;border-radius:4px;background:var(--acc);color:#1A1200;font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.modal-f{display:flex;justify-content:flex-end;gap:9px;padding:14px 22px;border-top:1px solid var(--line-soft)}
+
+/* ================= memory screen ================= */
+.pane-head{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--line-soft)}
+.pane-head h2{margin:0;font-size:15px;font-weight:600}
+.back{color:var(--dim);font-size:13px;cursor:pointer}
+.back:hover{color:var(--text)}
+.scope{display:flex;gap:6px;margin-left:8px}
+.scope .chip{cursor:pointer}
+.scope .chip.on{background:var(--acc-soft);border-color:#8a6a3a;color:var(--acc)}
+.ph-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.mem-wrap{display:flex;flex-direction:column;height:662px}
+.inbox{margin:16px 20px 0;border:1px dashed #8a6a3a;border-radius:11px;background:var(--acc-soft);padding:12px 16px;display:flex;flex-direction:column;gap:9px}
+.inbox-h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--acc)}
+.inbox-h .n{font-family:var(--mono)}
+.ib-item{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12.5px}
+.ib-item .src{color:var(--dim);font-size:11.5px;margin-left:auto;white-space:nowrap}
+.ib-item .nm{font-family:var(--mono);font-size:11.5px;color:var(--text)}
+.mem-body{flex:1;display:flex;gap:0;overflow:hidden;padding:14px 20px 20px}
+.mem-list{flex:1.35;display:flex;flex-direction:column;gap:8px;padding-right:16px;overflow:hidden}
+.mrow{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:var(--panel);cursor:pointer}
+.mrow:hover{border-color:#33405299}
+.mrow.on{border-color:#8a6a3a}
+.mrow .mr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mrow .mr-name{font-family:var(--mono);font-size:12px;color:var(--text)}
+.mrow .mr-desc{font-size:12.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .mr-meta{font-size:11px;color:var(--dim);font-family:var(--mono);white-space:nowrap}
+.mem-detail{flex:1;border-left:1px solid var(--line-soft);padding-left:18px;display:flex;flex-direction:column;gap:11px;min-width:0}
+.md-head{display:flex;align-items:center;gap:9px}
+.md-head .mr-name{font-family:var(--mono);font-size:13px}
+.md-head .acts{margin-left:auto;display:flex;gap:6px}
+.fm{border:1px solid var(--line);border-radius:9px;background:#11141B;overflow:hidden}
+.fm pre{margin:0;padding:12px 15px;font-family:var(--mono);font-size:11.5px;line-height:1.8;color:#B9C2D4;overflow-x:auto}
+.fm pre b{color:var(--acc);font-weight:500}
+.md-body{font-size:13px;color:var(--mut);line-height:1.75}
+.md-body b{color:var(--text)}
+
+/* ================= settings screen ================= */
+.set-wrap{height:662px;overflow:hidden;padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}
+.card{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:15px 18px;display:flex;flex-direction:column;gap:11px}
+.card.full{grid-column:1/-1}
+.card h3{margin:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .sub{font-weight:400;font-size:11.5px;color:var(--dim);margin-left:auto;font-family:var(--mono)}
+.kv{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mut)}
+.kv code{font-family:var(--mono);font-size:11.5px;color:var(--text);background:var(--win);border:1px solid var(--line);border-radius:6px;padding:3px 10px}
+.kv .lab{width:88px;flex:none;color:var(--dim)}
+table.rt{width:100%;border-collapse:collapse;font-size:12.5px}
+table.rt th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:4px 10px 8px;border-bottom:1px solid var(--line-soft);font-weight:500}
+table.rt td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--mut);white-space:nowrap}
+table.rt tr:last-child td{border-bottom:none}
+table.rt td.nm{color:var(--text);font-weight:500}
+table.rt code{font-family:var(--mono);font-size:11.5px;color:#B9C2D4}
+.tgl{width:30px;height:17px;border-radius:9px;background:var(--ok);position:relative;display:inline-block}
+.tgl::after{content:"";position:absolute;right:2px;top:2px;width:13px;height:13px;border-radius:50%;background:#0F1319}
+.tgl.off{background:#333B4B}
+.tgl.off::after{right:auto;left:2px}
+.ubar{display:flex;flex-direction:column;gap:8px}
+.ub{display:grid;grid-template-columns:110px 1fr 64px;align-items:center;gap:10px;font-size:12px;color:var(--mut)}
+.ub .tr{background:var(--raise);border-radius:4px;height:8px;overflow:hidden}
+.ub .fl{height:100%;border-radius:4px;background:var(--acc)}
+.ub .amt{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--text)}
+.paths{display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.paths .rl{justify-content:flex-start}
+.paths .op{margin-left:auto;color:var(--info);font-size:11.5px;cursor:pointer;white-space:nowrap}
+
+/* ================= design notes ================= */
+.notes{display:flex;flex-direction:column;gap:16px;margin-top:14px}
+.notes h2{font-size:13px;font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin:18px 0 0;font-weight:500}
+.note-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.note-grid .card h3{font-size:13.5px}
+.note-grid ol,.note-grid ul,.card ul{margin:0;padding-left:18px;color:var(--mut);font-size:13px;display:flex;flex-direction:column;gap:6px}
+.note-grid li b,.card li b{color:var(--text);font-weight:600}
+table.map{width:100%;border-collapse:collapse;font-size:12.5px}
+table.map th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:4px 10px 8px;border-bottom:1px solid var(--line-soft);font-weight:500}
+table.map td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--mut);vertical-align:top}
+table.map tr:last-child td{border-bottom:none}
+table.map td:first-child{color:var(--text);white-space:nowrap}
+table.map code{font-family:var(--mono);font-size:11px;color:#B9C2D4}
+.rw{font-size:10.5px;padding:1px 7px;border-radius:5px;white-space:nowrap}
+.rw.r{background:var(--info-soft);color:var(--info)}
+.rw.w{background:var(--acc-soft);color:var(--acc)}
+.sw-row{display:flex;gap:10px;flex-wrap:wrap}
+.sw{display:flex;flex-direction:column;gap:5px;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.sw i{width:76px;height:40px;border-radius:7px;border:1px solid var(--line);display:block}
+.open-q{border:1px solid #8a6a3a}
+.open-q h3{color:var(--acc)}
+.foot-note{color:var(--dim);font-size:12px;margin-top:6px}
+.wide-scroll{overflow-x:auto}
+</style>
+
+<div class="deck">
+  <header class="deck-head">
+    <span class="eyebrow">Design Spec · v0.1 · 2026-07-07</span>
+    <h1>LetsCoding — 桌面端 Coding Agent 前端设计稿</h1>
+    <p class="deck-sub">本地优先的多模型 coding 会话客户端：外形与记忆复用本机 <span class="mono">~/.claude</span> 体系，推理层走 LiteLLM 网关（Fable 5 / Opus 4.8 / GPT / DeepSeek…）。下方为可切换的四个高保真界面状态。</p>
+    <div class="deck-meta">
+      <span><b>平台</b> macOS 桌面</span>
+      <span><b>字体</b> 系统原生 SF Pro / PingFang SC + SF Mono</span>
+      <span><b>基调</b> 冷炭底 · 琥珀信号色</span>
+      <span><b>项目</b> ~/Desktop/LetsCoding</span>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="界面状态切换">
+    <button class="tab on" data-screen="work">① 工作台</button>
+    <button class="tab" data-screen="new">② 新建会话</button>
+    <button class="tab" data-screen="memory">③ 记忆库</button>
+    <button class="tab" data-screen="settings">④ 模型与连接</button>
+    <span class="tab-hint">点击标签切换 · 原型内侧栏的「新建会话 / 记忆库 / 模型设置」也可点击跳转</span>
+  </nav>
+
+  <div class="stage">
+    <div class="win">
+      <div class="titlebar">
+        <div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div class="tb-title">LetsCoding — ~/work/payments-api</div>
+        <div class="tb-pad"></div>
+      </div>
+
+      <!-- ============ ① 工作台（含 ② 新建会话 modal） ============ -->
+      <section class="screen on" id="scr-work">
+        <div class="wb" id="wb">
+
+          <!-- 左栏：会话分组 -->
+          <aside class="side">
+            <div class="side-top">
+              <div class="brand"><i></i>LetsCoding</div>
+              <button class="newbtn jump" data-jump="new">＋ 新建会话</button>
+              <div class="search">⌕ 搜索会话与记忆… <span style="margin-left:auto" class="mono">⌘K</span></div>
+            </div>
+            <div class="side-scroll">
+              <div class="grp"><span class="cv">▾</span>置顶 <span class="cnt">1</span></div>
+              <div class="sess"><span class="st idle"></span><div><div class="sess-t">LetsCoding 脚手架初始化</div><div class="sess-m"><span class="pdot an"></span><span class="mn">Fable 5</span>· 2 小时前</div></div></div>
+
+              <div class="grp"><span class="cv">▾</span>payments-api <span class="cnt">3</span></div>
+              <div class="sess on"><span class="st run"></span><div><div class="sess-t">订单回调重试修复</div><div class="sess-m"><span class="pdot an"></span><span class="mn">Fable 5</span>· 运行中</div></div></div>
+              <div class="sess"><span class="st wait"></span><div><div class="sess-t">对账字段映射梳理</div><div class="sess-m"><span class="pdot oa"></span><span class="mn">GPT-5.2</span>· 待确认 · 26 分钟前</div></div></div>
+              <div class="sess"><span class="st idle"></span><div><div class="sess-t">adapter 错误码统一</div><div class="sess-m"><span class="pdot ds"></span><span class="mn">DeepSeek</span>· 昨天</div></div></div>
+
+              <div class="grp"><span class="cv">▾</span>web-console <span class="cnt">2</span></div>
+              <div class="sess"><span class="st idle"></span><div><div class="sess-t">记忆模块延迟预算评审</div><div class="sess-m"><span class="pdot an"></span><span class="mn">Opus 4.8</span>· 3 天前</div></div></div>
+              <div class="sess"><span class="st idle"></span><div><div class="sess-t">消息层重构 plan</div><div class="sess-m"><span class="pdot an"></span><span class="mn">Fable 5</span>· 上周</div></div></div>
+
+              <div class="grp"><span class="cv">▸</span>sync-service <span class="cnt">1</span></div>
+            </div>
+            <div class="side-foot">
+              <button class="foot-row jump" data-jump="memory">◈ 记忆库 <span class="k">37 条 · 2 待确认</span></button>
+              <button class="foot-row jump" data-jump="settings"><span class="conn"></span> LiteLLM 已连接 <span class="k">设置</span></button>
+              <div class="foot-row" style="cursor:default">$ 本月用量 <span class="k">$42.18</span></div>
+            </div>
+          </aside>
+
+          <!-- 中栏：会话流 -->
+          <main class="main">
+            <div class="sess-head">
+              <span class="sh-title">订单回调重试修复</span>
+              <div class="sh-chips">
+                <span class="chip"><code>~/work/payments-api</code></span>
+                <span class="chip"><code>⎇ fix/order-callback</code></span>
+              </div>
+              <div class="sh-right">
+                <span class="chip"><span class="pdot an"></span>Fable 5 ▾</span>
+                <span class="chip">自动执行 ▾</span>
+                <span class="chip mono">72k / 200k · $0.63</span>
+              </div>
+            </div>
+
+            <div class="flow">
+              <div class="msg-u">绑定回调偶发超时后重试会重复绑定，帮我查一下 订单 adapter 回调这段的重试逻辑</div>
+
+              <div class="msg-a">
+                <p>先看回调入口和重试封装。</p>
+                <div class="tool"><span class="tico">$</span><code>rg "bind_callback" src/adapters/order</code><span class="tres">3 处匹配</span></div>
+                <div class="tool"><span class="tico">›</span><code>Read src/adapters/order/callback.py</code><span class="tres">214 行</span></div>
+                <p>问题在重试没带幂等键：超时后 <code class="mono">retry_bind()</code> 直接重发原请求，上游不去重，把重试当成了新绑定。修改如下：</p>
+                <div class="diff">
+                  <div class="dh">src/adapters/order/callback.py <span class="badge">EDIT</span></div>
+                  <pre><span class="ctx">  def retry_bind(self, req, attempt):</span><span class="del">-     return self._post("/bind", req.payload)</span><span class="add">+     payload = {**req.payload, "idempotency_key": req.trace_id}</span><span class="add">+     return self._post("/bind", payload, timeout=self._backoff(attempt))</span></pre>
+                </div>
+              </div>
+
+              <div class="mem-ev">
+                <span class="mv-ico">✦</span>
+                <div class="mv-body"><b>记忆沉淀建议</b> · feedback ·「绑定重试必须带幂等键，上游不去重」</div>
+                <button class="mini acc">确认落盘</button><button class="mini">忽略</button>
+              </div>
+
+              <div class="runline"><span class="spin"></span>正在运行 <code>pytest tests/adapters/test_order_callback.py</code> · 12s</div>
+            </div>
+
+            <div class="composer">
+              <div class="cbox">
+                <div class="cinput">输入消息，@ 引用文件，/ 调用 Skill…</div>
+                <div class="cbar">
+                  <span class="chip"><span class="pdot an"></span>Fable 5 ▾</span>
+                  <span class="chip">自动执行 ▾</span>
+                  <span class="sp"></span>
+                  <button class="send">⏎ 发送</button>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          <!-- 右栏：.claude 上下文 -->
+          <aside class="rail">
+            <div class="rail-grp">
+              <h4>.claude 上下文</h4>
+              <div class="rl"><span class="ok-t">✓</span>全局 <code>~/.claude/CLAUDE.md</code></div>
+              <div class="rl"><span class="ok-t">✓</span>项目 <code>./CLAUDE.md</code></div>
+              <div class="rl"><span class="ok-t">✓</span><code>DECISIONS.md</code> 已注入</div>
+            </div>
+            <div class="rail-grp">
+              <h4>唤起的记忆 · 2</h4>
+              <div class="mem-card"><span class="ttag feedback">feedback</span><span class="mc-name">demo-reply-stance</span><span class="mc-desc">示例：外部问询导向标准流程</span></div>
+              <div class="mem-card"><span class="ttag feedback">feedback</span><span class="mc-name">real-source-over-guessing</span><span class="mc-desc">以真信源为准，抓不到明说别猜</span></div>
+            </div>
+            <div class="rail-grp">
+              <h4>可用 Skills</h4>
+              <div class="skills"><span class="chip">gateway-probe</span><span class="chip">grill-me</span><span class="chip">code-review</span><span class="chip">+12</span></div>
+            </div>
+            <div class="rail-grp">
+              <h4>本轮改动</h4>
+              <div class="rl"><code>callback.py</code><span style="color:var(--acc);font-family:var(--mono);font-size:11px">M</span></div>
+            </div>
+          </aside>
+
+          <!-- ② 新建会话 modal -->
+          <div class="overlay">
+            <div class="modal">
+              <div class="modal-h"><h3>新建会话</h3><p>会话按工作目录自动分组，指令与记忆从对应 .claude 目录继承</p></div>
+              <div class="modal-b">
+                <div class="fld">
+                  <label>工作目录</label>
+                  <div class="dirbox"><code>~/Desktop/LetsCoding</code><span class="cv">▾</span></div>
+                  <div class="recents"><span class="chip">最近：payments-api</span><span class="chip">web-console</span><span class="chip">sync-service</span></div>
+                </div>
+                <div class="fld">
+                  <label>模型 · 经 LiteLLM 路由</label>
+                  <div class="mgrid">
+                    <div class="mcard on"><div class="mc-top"><span class="pdot an"></span>Fable 5<span class="tag">默认</span></div><div class="mc-sub">Anthropic · 200K 上下文 · 旗舰推理</div></div>
+                    <div class="mcard"><div class="mc-top"><span class="pdot an"></span>Opus 4.8</div><div class="mc-sub">Anthropic · 200K · 支持 fast 模式</div></div>
+                    <div class="mcard"><div class="mc-top"><span class="pdot oa"></span>GPT-5.2 Codex</div><div class="mc-sub">OpenAI · 代码专精</div></div>
+                    <div class="mcard"><div class="mc-top"><span class="pdot ds"></span>DeepSeek V3.2</div><div class="mc-sub">DeepSeek · 低成本长任务</div></div>
+                  </div>
+                </div>
+                <div class="fld">
+                  <label>权限模式</label>
+                  <div class="seg"><span class="on">自动执行</span><span>计划先行</span><span>每步确认</span></div>
+                </div>
+                <div class="fld">
+                  <label>继承</label>
+                  <div class="checks">
+                    <span class="ck"><i>✓</i>全局 CLAUDE.md</span>
+                    <span class="ck"><i>✓</i>项目 CLAUDE.md</span>
+                    <span class="ck"><i>✓</i>目录记忆（3 条）</span>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-f"><button class="mini jump" data-jump="work">取消</button><button class="mini acc jump" data-jump="work">开始会话</button></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============ ③ 记忆库 ============ -->
+      <section class="screen" id="scr-memory">
+        <div class="pane-head">
+          <button class="back jump" data-jump="work">‹ 工作台</button>
+          <h2>记忆库</h2>
+          <div class="scope"><span class="chip on">当前目录</span><span class="chip">全部项目</span></div>
+          <div class="ph-right">
+            <span class="search" style="width:220px">⌕ 搜索记忆…</span>
+            <button class="mini">整理记忆</button>
+          </div>
+        </div>
+        <div class="mem-wrap">
+          <div class="inbox">
+            <div class="inbox-h">✦ 沉淀收件箱 <span class="n">· 2 条待确认（确认前不写盘）</span></div>
+            <div class="ib-item"><span class="ttag feedback">feedback</span><span class="nm">order-bind-idempotency</span><span>绑定重试必须带幂等键，上游不去重</span><span class="src">来自「订单回调重试修复」· 刚刚</span><button class="mini acc">落盘</button><button class="mini">丢弃</button></div>
+            <div class="ib-item"><span class="ttag project">project</span><span class="nm">letscoding-ui-direction</span><span>UI 走冷炭底 + 琥珀信号色，系统字体</span><span class="src">来自「脚手架初始化」· 2 小时前</span><button class="mini acc">落盘</button><button class="mini">丢弃</button></div>
+          </div>
+          <div class="mem-body">
+            <div class="mem-list">
+              <div class="mrow on"><span class="ttag feedback">feedback</span><div class="mr-main"><span class="mr-name">real-source-over-guessing</span><span class="mr-desc">精读/重建以字幕原文为准，抓不到明说别猜；命名前重核实</span></div><span class="mr-meta">Desktop · 06-28</span></div>
+              <div class="mrow"><span class="ttag feedback">feedback</span><div class="mr-main"><span class="mr-name">demo-reply-stance</span><span class="mr-desc">示例：某类外部问询统一导向标准流程</span></div><span class="mr-meta">Desktop · 06-21</span></div>
+              <div class="mrow"><span class="ttag feedback">feedback</span><div class="mr-main"><span class="mr-name">precipitate-reusable-methodology</span><span class="mr-desc">可复用工作方法/协作模式也到沉淀门槛，别只盯技术事实</span></div><span class="mr-meta">Desktop · 06-20</span></div>
+              <div class="mrow"><span class="ttag project">project</span><div class="mr-main"><span class="mr-name">payments-api-billing-fields</span><span class="mr-desc">对账以 E 字段为准，B/G 仅参考；金额单位为分</span></div><span class="mr-meta">payments-api · 06-15</span></div>
+              <div class="mrow"><span class="ttag reference">reference</span><div class="mr-main"><span class="mr-name">litellm-proxy-dashboard</span><span class="mr-desc">本机 LiteLLM 管理台与用量看板入口</span></div><span class="mr-meta">全局 · 05-30</span></div>
+            </div>
+            <div class="mem-detail">
+              <div class="md-head"><span class="ttag feedback">feedback</span><span class="mr-name">real-source-over-guessing.md</span><div class="acts"><button class="mini">编辑</button><button class="mini">删除</button></div></div>
+              <div class="fm"><pre><b>---</b>
+<b>name:</b> real-source-over-guessing
+<b>description:</b> 精读/重建以字幕原文为准，抓不到明说别猜
+<b>metadata:</b>
+  <b>type:</b> feedback
+<b>---</b></pre></div>
+              <div class="md-body">精读、重建类任务必须以<b>字幕/原文等真信源</b>为准，拿不到就明说，不允许凭印象补写；命名类操作前先核实现状。<br><br><b>Why:</b> 一次会话内两次 plausible-but-wrong，都源于凭记忆猜。<br><b>How to apply:</b> 引用前先取原文；取不到时显式声明缺信源。</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ④ 模型与连接 ============ -->
+      <section class="screen" id="scr-settings">
+        <div class="pane-head">
+          <button class="back jump" data-jump="work">‹ 工作台</button>
+          <h2>模型与连接</h2>
+        </div>
+        <div class="set-wrap">
+          <div class="card">
+            <h3><span class="conn"></span> LiteLLM 网关 <span class="sub">v1.74 · 延迟 24ms</span></h3>
+            <div class="kv"><span class="lab">Base URL</span><code>http://127.0.0.1:4000</code></div>
+            <div class="kv"><span class="lab">API Key</span><code>sk-••••••••••••3f2a</code></div>
+            <div class="kv"><span class="lab"></span><button class="mini">测试连接</button></div>
+          </div>
+          <div class="card">
+            <h3>默认模型</h3>
+            <div class="kv"><span class="lab">会话默认</span><span class="chip"><span class="pdot an"></span>Fable 5 ▾</span></div>
+            <div class="kv"><span class="lab">轻任务</span><span class="chip"><span class="pdot an"></span>Haiku 4.5 ▾</span><span style="font-size:11.5px;color:var(--dim)">标题 / 摘要 / 记忆整理</span></div>
+          </div>
+          <div class="card full">
+            <h3>模型路由 <span class="sub">同步自 LiteLLM /model/info</span></h3>
+            <div class="wide-scroll">
+              <table class="rt">
+                <thead><tr><th>显示名</th><th>LiteLLM 路由 ID</th><th>提供方</th><th>定位</th><th>启用</th></tr></thead>
+                <tbody>
+                  <tr><td class="nm"><span class="pdot an"></span> Fable 5</td><td><code>anthropic/claude-fable-5</code></td><td>Anthropic</td><td>旗舰 · 会话默认</td><td><span class="tgl"></span></td></tr>
+                  <tr><td class="nm"><span class="pdot an"></span> Opus 4.8</td><td><code>anthropic/claude-opus-4-8</code></td><td>Anthropic</td><td>fast 模式</td><td><span class="tgl"></span></td></tr>
+                  <tr><td class="nm"><span class="pdot an"></span> Haiku 4.5</td><td><code>anthropic/claude-haiku-4-5</code></td><td>Anthropic</td><td>轻任务</td><td><span class="tgl"></span></td></tr>
+                  <tr><td class="nm"><span class="pdot oa"></span> GPT-5.2 Codex</td><td><code>openai/gpt-5.2-codex</code></td><td>OpenAI</td><td>代码专精</td><td><span class="tgl"></span></td></tr>
+                  <tr><td class="nm"><span class="pdot ds"></span> DeepSeek V3.2</td><td><code>deepseek/deepseek-chat</code></td><td>DeepSeek</td><td>低成本长任务</td><td><span class="tgl off"></span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <h3>本地数据 <span class="sub">与 Claude Code CLI 共用</span></h3>
+            <div class="paths">
+              <div class="rl"><code>~/.claude/CLAUDE.md</code><span style="font-size:11.5px">全局指令</span><span class="op">在 Finder 打开</span></div>
+              <div class="rl"><code>~/.claude/projects/&lt;目录&gt;/</code><span style="font-size:11.5px">会话记录</span><span class="op">在 Finder 打开</span></div>
+              <div class="rl"><code>…/&lt;目录&gt;/memory/</code><span style="font-size:11.5px">记忆</span><span class="op">在 Finder 打开</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>本月用量 <span class="sub">$42.18</span></h3>
+            <div class="ubar">
+              <div class="ub"><span>Fable 5</span><div class="tr"><div class="fl" style="width:74%"></div></div><span class="amt">$31.20</span></div>
+              <div class="ub"><span>GPT-5.2 Codex</span><div class="tr"><div class="fl" style="width:16%;background:#74AA9C"></div></div><span class="amt">$6.80</span></div>
+              <div class="ub"><span>Haiku 4.5</span><div class="tr"><div class="fl" style="width:10%;background:#8B93A5"></div></div><span class="amt">$4.18</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ============ 设计说明 ============ -->
+  <div class="notes">
+    <h2>信息架构与关键流程</h2>
+    <div class="note-grid">
+      <div class="card">
+        <h3>三栏工作台</h3>
+        <ul>
+          <li><b>左栏 · 会话</b>：按工作目录自动分组（与 <span class="mono">~/.claude/projects/</span> 的组织方式同构），支持置顶、状态点（运行 / 待确认 / 空闲）、⌘K 全局搜索。</li>
+          <li><b>中栏 · 会话流</b>：消息 + 工具调用折叠行 + diff 块 + 沉淀建议事件，底部常驻输入框（可换模型 / 权限模式）。</li>
+          <li><b>右栏 · .claude 上下文</b>：把「这轮到底加载了什么」显性化——指令层级、唤起的记忆、可用 Skills、改动文件。这是与纯 CLI 最大的体验差异点。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>记忆沉淀流程</h3>
+        <ol>
+          <li>会话中模型触发<b>沉淀建议</b>（内联事件卡，可当场确认）；</li>
+          <li>未处理的进入<b>收件箱</b>暂存，<b>不写盘</b>；</li>
+          <li>用户确认后才写 <span class="mono">memory/&lt;slug&gt;.md</span> 并更新 <span class="mono">MEMORY.md</span> 索引；</li>
+          <li>「整理记忆」= 手动触发合并去重（consolidate）。</li>
+        </ol>
+        <ul style="margin-top:8px"><li style="list-style:none;color:var(--dim);font-size:12px">与你现有协议一致：确认前绝不落盘，宁缺毋滥。</li></ul>
+      </div>
+      <div class="card">
+        <h3>视觉规范</h3>
+        <div class="sw-row">
+          <span class="sw"><i style="background:#0C0E13"></i>底 #0C0E13</span>
+          <span class="sw"><i style="background:#171B24"></i>面板 #171B24</span>
+          <span class="sw"><i style="background:#FFB454"></i>琥珀 #FFB454</span>
+          <span class="sw"><i style="background:#62C98D"></i>运行 #62C98D</span>
+          <span class="sw"><i style="background:#F0716B"></i>错误 #F0716B</span>
+        </div>
+        <ul style="margin-top:10px">
+          <li>系统字体（SF Pro / PingFang SC）= 原生 mac 质感；代码与路径一律 SF Mono。</li>
+          <li>琥珀只做「信号」：主按钮、选中态、沉淀事件；语义色（绿/红/蓝）与主色分离。</li>
+          <li>圆角 6–12px 两档；间距 4 的倍数；数字列 tabular-nums。</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>本地数据映射（外形与记忆全部落在 .claude）</h2>
+    <div class="card full">
+      <div class="wide-scroll">
+        <table class="map">
+          <thead><tr><th>UI 区域</th><th>本地数据源</th><th>读写</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>会话分组 / 列表</td><td><code>~/.claude/projects/&lt;目录 slug&gt;/</code></td><td><span class="rw r">读</span> <span class="rw w">写</span></td><td>目录即分组；与 Claude Code CLI 的会话可互相看见</td></tr>
+            <tr><td>会话记录</td><td><code>&lt;slug&gt;/*.jsonl</code>（transcript）</td><td><span class="rw r">读</span> <span class="rw w">写</span></td><td>存储格式是否与 CLI 完全同构 → 见待对齐 ③</td></tr>
+            <tr><td>记忆库 / 右栏记忆卡</td><td><code>&lt;slug&gt;/memory/*.md</code> + <code>MEMORY.md</code></td><td><span class="rw r">读</span> <span class="rw w">写</span></td><td>frontmatter 四类型（user/feedback/project/reference）；写盘必经确认</td></tr>
+            <tr><td>指令层级（右栏）</td><td><code>~/.claude/CLAUDE.md</code> + 项目 <code>CLAUDE.md</code> + <code>DECISIONS.md</code></td><td><span class="rw r">读</span></td><td>App 只展示与注入，不代改</td></tr>
+            <tr><td>Skills 芯片</td><td><code>~/.claude/skills/</code> + 插件</td><td><span class="rw r">读</span></td><td>展示可用集，/ 触发</td></tr>
+            <tr><td>模型列表 / 用量</td><td>LiteLLM <code>/model/info</code> · <code>/spend</code></td><td><span class="rw r">读</span></td><td>运行时拉取，App 本身不存模型配置</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h2>实现前待对齐的决策分支（grill-me 清单）</h2>
+    <div class="card full open-q">
+      <h3>这版稿只钉「长什么样」，下面每支都会改变「怎么建」，实现前需逐个钉死：</h3>
+      <ul>
+        <li><b>① 壳与栈</b>：Tauri（轻、原生感好）vs Electron（生态熟、坑少）。</li>
+        <li><b>② 会话引擎（最重的一支）</b>：嵌 Claude Agent SDK、把 base URL 指向 LiteLLM 网关（工具调用/权限/子代理白拿，但非 Claude 系模型的兼容性受 LiteLLM 转换质量制约）vs 自研 agent loop（全模型可控，但工具执行、权限门、回放要全部自建）。</li>
+        <li><b>③ .claude 互通深度</b>：transcript 与 CLI 完全同构（同一会话可在 CLI 续跑，最强但被上游格式绑死）vs 只共享指令与记忆、会话记录自有格式。</li>
+        <li><b>④ 多模型记忆口径</b>：非 Claude 模型产出的沉淀建议是否走同一确认协议、同一 frontmatter 规范。</li>
+        <li><b>⑤ 权限模型</b>：自动执行 / 计划先行 / 每步确认三档是否够，危险命令（删除、部署、远程写）是否单独硬门。</li>
+      </ul>
+    </div>
+    <p class="foot-note">本稿为静态高保真原型，界面数据均为示意；确认方向后按此稿拆组件与状态。</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  var wb=document.getElementById('wb');
+  var screens={work:'scr-work',new:'scr-work',memory:'scr-memory',settings:'scr-settings'};
+  function show(key){
+    Object.keys(screens).forEach(function(k){
+      document.getElementById(screens[k]).classList.remove('on');
+    });
+    document.getElementById(screens[key]).classList.add('on');
+    wb.classList.toggle('modal-on',key==='new');
+    tabs.forEach(function(t){t.classList.toggle('on',t.dataset.screen===key);});
+  }
+  tabs.forEach(function(t){t.addEventListener('click',function(){show(t.dataset.screen);});});
+  document.querySelectorAll('.jump').forEach(function(b){
+    b.addEventListener('click',function(){show(b.dataset.jump);});
+  });
+})();
+</script>

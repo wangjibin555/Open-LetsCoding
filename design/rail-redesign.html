@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>LetsCoding 右栏优化设计稿 v1</title>
+<style>
+  :root {
+    --page: #f3f4f7; --win: #ffffff; --panel: #f7f8fa; --raise: #eceef3;
+    --line: #d9dee7; --line-soft: #e7eaf0; --text: #1c2433; --mut: #5b6577;
+    --dim: #8b94a5; --acc: #b45309; --acc-fill: #ffb454; --acc-line: #e3b26b;
+    --ok: #15803d; --err: #dc2626; --info: #2563eb; --purple: #7c3aed;
+    --side: #eef0f5; --code-bg: #f2f4f8; --block-bg: #fafbfd; --code-fg: #3b4557;
+    --mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--page); color: var(--text);
+    font: 13px/1.55 -apple-system, 'PingFang SC', sans-serif;
+    display: flex; gap: 28px; padding: 28px; align-items: flex-start;
+  }
+  .notes { width: 330px; font-size: 12.5px; color: var(--mut); }
+  .notes h2 { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+  .notes li { margin: 0 0 9px 16px; }
+  .notes b { color: var(--acc); }
+
+  /* ============ 右栏（提案） ============ */
+  .rail {
+    width: 316px; background: var(--panel);
+    border-left: 1px solid var(--line-soft);
+    border-radius: 10px; box-shadow: 0 1px 4px rgba(28,36,51,.06);
+    padding: 6px 0 10px; overflow: hidden;
+  }
+  .sec { padding: 7px 14px 9px; }
+  .sec + .sec { border-top: 1px solid var(--line-soft); }
+  .sec-h {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 650; letter-spacing: .12em;
+    color: var(--dim); text-transform: uppercase;
+    padding: 5px 0 7px; cursor: pointer; user-select: none;
+  }
+  .sec-h .cv { font-size: 8.5px; width: 9px; color: var(--dim); }
+  .sec-h .cnt { color: var(--mut); font-weight: 600; letter-spacing: 0; }
+  .sec-h .hint { margin-left: auto; letter-spacing: 0; font-weight: 500; color: var(--dim); text-transform: none; }
+
+  .row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 2px; font-size: 12.3px; min-width: 0; border-radius: 6px;
+  }
+  .row:hover { background: var(--raise); }
+  .row code { font-family: var(--mono); font-size: 11.3px; color: var(--code-fg); }
+  .ok-t { color: var(--ok); font-size: 11px; width: 13px; flex: none; }
+  .off-t { color: var(--dim); width: 13px; flex: none; }
+
+  /* 记忆：扁平行，彩点分类型 */
+  .mrow { display: flex; align-items: baseline; gap: 7px; padding: 4px 2px; min-width: 0; border-radius: 6px; }
+  .mrow:hover { background: var(--raise); }
+  .mdot { width: 7px; height: 7px; border-radius: 50%; flex: none; align-self: center; }
+  .mdot.project { background: var(--ok); }
+  .mdot.feedback { background: var(--purple); }
+  .mname { font-family: var(--mono); font-size: 11.3px; color: var(--text); flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mdesc { font-size: 11px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .more-link { font-size: 11.5px; color: var(--dim); padding: 5px 2px 0; cursor: pointer; }
+  .more-link:hover { color: var(--acc); }
+
+  /* skills：/name + 描述 */
+  .skrow { display: flex; align-items: baseline; gap: 8px; padding: 3.5px 2px; min-width: 0; border-radius: 6px; }
+  .skrow:hover { background: var(--raise); }
+  .skrow code { color: var(--acc); font-size: 11.3px; flex: none; }
+  .skdesc { font-size: 11px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* 改动：文件行 + 展开 mini diff */
+  .frow { display: flex; align-items: center; gap: 6px; padding: 4px 2px; cursor: pointer; min-width: 0; border-radius: 6px; }
+  .frow:hover { background: var(--raise); }
+  .frow .cv { font-size: 8.5px; width: 9px; color: var(--dim); flex: none; }
+  .fbadge {
+    font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+    color: var(--acc); background: rgba(255,180,84,.18);
+    border-radius: 4px; padding: 0.5px 5px; flex: none;
+  }
+  .fname { font-family: var(--mono); font-size: 11.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fsum { font-family: var(--mono); font-size: 10.5px; font-weight: 650; flex: none; display: flex; gap: 5px; }
+  .fsum .p { color: var(--ok); } .fsum .m { color: var(--err); }
+  .fdiff {
+    margin: 2px 0 6px 17px; padding: 6px 9px;
+    background: var(--block-bg); border: 1px solid var(--line-soft); border-radius: 7px;
+    font-family: var(--mono); font-size: 10.5px; line-height: 1.55; overflow: hidden;
+  }
+  .fdiff span { display: block; white-space: pre; }
+  .fdiff .d { color: var(--err); background: rgba(220,38,38,.05); }
+  .fdiff .a { color: var(--ok); background: rgba(21,128,61,.06); }
+
+  /* 会话：底部信息卡 */
+  .sess-meta { display: flex; flex-direction: column; gap: 6px; }
+  .sm-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--mut); }
+  .sm-row code { font-size: 10.5px; color: var(--dim); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line-soft); background: var(--win); border-radius: 20px; padding: 1px 9px; font-size: 11px; color: var(--mut); }
+  .pdot { width: 6px; height: 6px; border-radius: 50%; background: var(--acc-fill); }
+  .tok-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--raise); overflow: hidden; }
+  .tok-bar i { display: block; height: 100%; width: 34%; background: var(--acc-fill); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="notes">
+  <h2>右栏优化设计稿 v1 — 变更点</h2>
+  <ul>
+    <li><b>去卡片化</b>：记忆从三个大卡片改为扁平单行（彩点=类型：绿 project / 紫 feedback），信息密度 3 行顶过去 1 张卡。</li>
+    <li><b>统一小节头</b>：全大写小字 + 字距（Claude Code 质感），计数并入头部，右侧放操作提示；全部可折叠。</li>
+    <li><b>发丝线分区</b>：小节之间 1px 分隔线，整栏一个浅面板底，不再层层描边。</li>
+    <li><b>本轮改动</b>：M 徽标 + 文件名 + ±行数；点击展开 mini diff（当前实现已支持，此稿定视觉）。</li>
+    <li><b>会话小节</b>：id + 模型 + 上下文用量条（为后续「接近压缩阈值提示」预留）。</li>
+    <li>行 hover 统一浅灰底、6px 圆角，全栏可交互感。</li>
+  </ul>
+</div>
+
+<aside class="rail">
+  <div class="sec">
+    <div class="sec-h"><span class="cv">▾</span>上下文</div>
+    <div class="row"><span class="ok-t">✓</span>全局 <code>~/.claude/CLAUDE.md</code></div>
+    <div class="row"><span class="off-t">—</span>项目 <code>./CLAUDE.md</code></div>
+    <div class="row"><span class="ok-t">✓</span><code>DECISIONS.md</code></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="cv">▾</span>目录记忆 <span class="cnt">3</span><span class="hint">打开记忆库 →</span></div>
+    <div class="mrow"><span class="mdot project"></span><span class="mname">demo-reply-stance</span><span class="mdesc">示例：对外回复的统一口径</span></div>
+    <div class="mrow"><span class="mdot feedback"></span><span class="mname">precipitate-reusable-me…</span><span class="mdesc">可复用方法/协作模式也达沉淀门槛</span></div>
+    <div class="mrow"><span class="mdot feedback"></span><span class="mname">real-source-over-guessing</span><span class="mdesc">精读以真信源优先，抓不到明说</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="cv">▾</span>Skills <span class="cnt">9</span><span class="hint">输入 / 调用</span></div>
+    <div class="skrow"><code>/arch-eval</code><span class="skdesc">按评价标准给架构方案打分</span></div>
+    <div class="skrow"><code>/arch-study</code><span class="skdesc">沉淀技术模块架构学习文档</span></div>
+    <div class="skrow"><code>/grill-me</code><span class="skdesc">穷尽式盘问直到决策全对齐</span></div>
+    <div class="more-link">全部 9 个 →</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="cv">▾</span>本轮改动 <span class="cnt">3</span></div>
+    <div class="frow"><span class="cv">▾</span><span class="fbadge">M</span><span class="fname">useStream.ts</span><span class="fsum"><span class="p">+14</span><span class="m">−12</span></span></div>
+    <div class="fdiff"><span class="d">- if (m.type === 'stream_event') {</span><span class="d">-   if (!s.running) { s.running = true</span><span class="a">+ const delta = m.event?.type === 'con…</span><span class="a">+ if (delta?.type === 'text_delta') {</span><span class="a">+   s.items = s.items.map((it) =&gt; …</span></div>
+    <div class="frow"><span class="cv">▸</span><span class="fbadge">M</span><span class="fname">App.tsx</span><span class="fsum"><span class="p">+30</span><span class="m">−10</span></span></div>
+    <div class="frow"><span class="cv">▸</span><span class="fbadge">M</span><span class="fname">theme.css</span><span class="fsum"><span class="p">+88</span></span></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="cv">▾</span>会话</div>
+    <div class="sess-meta">
+      <div class="sm-row"><code>7eb308f7-b628-45ab…</code></div>
+      <div class="sm-row"><span class="chip"><span class="pdot"></span>opus-4.8</span><span class="chip">自动执行</span></div>
+      <div class="sm-row">上下文 <div class="tok-bar"><i></i></div> <span style="font-family:var(--mono);font-size:10.5px">34%</span></div>
+    </div>
+  </div>
+</aside>
+
+</body>
+</html>

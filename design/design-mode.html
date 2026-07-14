@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>LetsCoding Design 模式设计稿 v2 · 预览 + 设计对话</title>
+<style>
+  :root {
+    --page: #f3f4f7; --win: #ffffff; --panel: #f7f8fa; --raise: #eceef3;
+    --line: #d9dee7; --line-soft: #e7eaf0; --text: #1c2433; --mut: #5b6577;
+    --dim: #8b94a5; --acc: #b45309; --acc-fill: #ffb454; --acc-line: #e3b26b;
+    --ok: #15803d; --err: #dc2626; --info: #2563eb; --purple: #7c3aed;
+    --side: #eef0f5; --code-bg: #f2f4f8; --block-bg: #fafbfd; --code-fg: #3b4557;
+    --mono: 'SF Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--page); color: var(--text);
+    font: 13px/1.55 -apple-system, 'PingFang SC', sans-serif;
+    display: flex; gap: 26px; padding: 26px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .notes { width: 270px; font-size: 12.5px; color: var(--mut); }
+  .notes h2 { font-size: 14px; color: var(--text); margin: 0 0 10px; }
+  .notes h3 { font-size: 12.5px; color: var(--text); margin: 14px 0 6px; }
+  .notes li { margin: 0 0 8px 16px; }
+  .notes b { color: var(--acc); }
+  .cap { font-size: 11px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; font-weight: 650; margin-bottom: -12px; }
+  .col { display: flex; flex-direction: column; gap: 20px; }
+
+  .mode-tabs { display: flex; align-items: center; gap: 4px; width: max-content; }
+  .mtab { display: flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--mut); }
+  .mtab .ic { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: -1.5px; }
+  .mtab.on { background: var(--win); color: var(--text); border-color: var(--line); box-shadow: 0 1px 2px rgba(28,36,51,.06); }
+  .mtab:not(.on) { padding: 5px 8px; }
+  .mtab:not(.on) .lab { display: none; }
+
+  /* ============ Design 整页：文件列表 ｜ 预览 ｜ 设计对话 ============ */
+  .app { width: 1150px; height: 620px; background: var(--win); border: 1px solid var(--line-soft); border-radius: 14px; box-shadow: 0 12px 40px rgba(28,36,51,.12); display: flex; overflow: hidden; }
+
+  .dz-list { width: 218px; flex: none; background: var(--side); border-right: 1px solid var(--line-soft); display: flex; flex-direction: column; }
+  .dz-top { padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .brand i { width: 9px; height: 9px; border-radius: 3px; background: var(--acc-fill); box-shadow: 0 0 10px rgba(180,83,9,.3); }
+  .dz-body { flex: 1; overflow-y: auto; padding: 2px 10px 12px; }
+  .dz-grp { font-size: 10.5px; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; font-weight: 650; padding: 8px 6px 5px; display: flex; }
+  .dz-grp .hint { margin-left: auto; letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .frow { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; cursor: pointer; min-width: 0; }
+  .frow:hover { background: var(--raise); }
+  .frow.on { background: var(--win); box-shadow: 0 1px 3px rgba(28,36,51,.08); }
+  .frow .fic { font-size: 11px; color: var(--purple); flex: none; }
+  .fname { font-family: var(--mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fwhen { margin-left: auto; font-size: 10px; color: var(--dim); flex: none; }
+  .fnew { font-size: 9.5px; color: var(--acc); background: #fff3e0; padding: 0 5px; border-radius: 8px; font-weight: 650; flex: none; }
+
+  .dz-main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--block-bg); }
+  .dz-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--line-soft); background: var(--win); }
+  .dz-file { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .dz-file .dir { color: var(--dim); font-weight: 400; }
+  .wseg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; margin-left: 12px; }
+  .wseg span { padding: 3px 9px; font-size: 11px; color: var(--mut); cursor: pointer; }
+  .wseg span + span { border-left: 1px solid var(--line-soft); }
+  .wseg span.on { background: var(--raise); color: var(--text); font-weight: 650; }
+  .bar-act { margin-left: auto; display: flex; gap: 4px; }
+  .mini { padding: 3px 8px; border: 1px solid var(--line); border-radius: 7px; font-size: 11px; color: var(--mut); cursor: pointer; background: var(--win); }
+
+  .dz-canvas { flex: 1; overflow: auto; padding: 16px; display: flex; justify-content: center; align-items: flex-start; }
+  .dz-frame { width: 100%; max-width: 520px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 4px 18px rgba(28,36,51,.08); overflow: hidden; }
+  .dz-frame .fhead { font-size: 10px; color: var(--dim); padding: 5px 10px; border-bottom: 1px solid var(--line-soft); display: flex; gap: 5px; align-items: center; }
+  .dz-frame .fhead i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .mock { padding: 14px; }
+  .mock .mrow { display: flex; gap: 10px; margin-bottom: 10px; }
+  .mock .box { border: 1px solid var(--line-soft); border-radius: 8px; background: var(--panel); }
+  .mock .b1 { width: 100px; height: 130px; }
+  .mock .b2 { flex: 1; height: 130px; }
+  .mock .b3 { height: 40px; flex: 1; }
+  .mock .tag { font-size: 10px; color: var(--dim); padding: 4px 6px; }
+  .dz-status { padding: 6px 14px; border-top: 1px solid var(--line-soft); background: var(--win); font-size: 11px; color: var(--dim); display: flex; gap: 14px; }
+  .dz-status .fresh { color: var(--ok); }
+
+  /* ============ 右：设计对话 ============ */
+  .chat { width: 330px; flex: none; border-left: 1px solid var(--line-soft); background: var(--win); display: flex; flex-direction: column; }
+  .chat-h { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 8px; }
+  .chat-h .t { font-size: 12.5px; font-weight: 700; }
+  .chat-h .sub { font-size: 10.5px; color: var(--dim); }
+  .chat-h .new { margin-left: auto; font-size: 11px; color: var(--mut); cursor: pointer; }
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .m-user { align-self: flex-end; max-width: 85%; background: var(--raise); border-radius: 12px 12px 4px 12px; padding: 7px 11px; font-size: 12.3px; }
+  .m-ai { max-width: 92%; font-size: 12.3px; line-height: 1.6; }
+  .m-tool { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--mut); background: var(--panel); border: 1px solid var(--line-soft); border-radius: 8px; padding: 4px 9px; width: max-content; max-width: 100%; }
+  .m-tool .ed { color: var(--acc); font-weight: 700; font-size: 10px; }
+  .m-tool code { font-family: var(--mono); font-size: 10px; color: var(--code-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-tool .diff { flex: none; }
+  .m-tool .add { color: var(--ok); }
+  .m-tool .del { color: var(--err); }
+  .m-note { font-size: 10.5px; color: var(--ok); display: flex; gap: 5px; align-items: center; }
+  .chat-c { border-top: 1px solid var(--line-soft); padding: 10px 12px; }
+  .chat-in { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12.3px; color: var(--dim); min-height: 54px; background: var(--win); }
+  .chat-f { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 10.5px; border: 1px solid var(--line); border-radius: 20px; padding: 1px 8px; color: var(--mut); display: flex; align-items: center; gap: 4px; }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: #e07a2f; }
+  .send { margin-left: auto; padding: 4px 13px; border-radius: 8px; background: var(--acc-fill); color: #4a2c00; font-weight: 700; font-size: 11.5px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="notes">
+  <h2>Design 模式设计稿 v2</h2>
+  <h3>v2 新增：设计对话（右栏）</h3>
+  <ul>
+    <li>对话 = <b>真实会话</b>（复用现有引擎）：auto 档、全工具——它要能直接改 <code>design/*.html</code></li>
+    <li><b>按设计稿绑会话</b>：每份稿一条持续对话，切文件切上下文；「新对话」可重开</li>
+    <li>消息区轻量渲染：文字 + 折叠的改动条（EDIT 文件 +12 −3），不搬 Code 模式全套</li>
+    <li>会话改稿落盘 → <b>预览自动刷新</b>（绿点提示），改完即看</li>
+    <li>该会话同时出现在 Code 左栏「设计稿」分组——两边可接力</li>
+  </ul>
+  <h3>不变</h3>
+  <ul>
+    <li>范围 design/*.html ｜ sandbox iframe 隔离 ｜ 三档宽度 ｜ 浏览器/访达逃生口</li>
+    <li>首条消息模板注入主题 token 骨架约定，历次风格统一</li>
+  </ul>
+</div>
+
+<div class="col">
+  <div class="cap">Design 模式整页 v2：文件列表 ｜ 预览画布 ｜ 设计对话</div>
+  <div class="app">
+    <div class="dz-list">
+      <div class="dz-top">
+        <div class="brand"><i></i>LetsCoding</div>
+        <div class="mode-tabs">
+          <div class="mtab"><span class="ic">&lt;/&gt;</span><span class="lab">Code</span></div>
+          <div class="mtab"><span class="ic">◷</span><span class="lab">TaskWork</span></div>
+          <div class="mtab on"><span class="ic">◇</span><span class="lab">Design</span></div>
+        </div>
+      </div>
+      <div class="dz-body">
+        <div class="dz-grp">design/ <span class="hint">4 份</span></div>
+        <div class="frow on"><span class="fic">◈</span><span class="fname">design-mode.html</span><span class="fnew">新</span><span class="fwhen">刚刚</span></div>
+        <div class="frow"><span class="fic">◈</span><span class="fname">cwork-design.html</span><span class="fwhen">今天</span></div>
+        <div class="frow"><span class="fic">◈</span><span class="fname">rail-redesign.html</span><span class="fwhen">昨天</span></div>
+        <div class="frow"><span class="fic">◈</span><span class="fname">letscoding-ui-design.html</span><span class="fwhen">7/7</span></div>
+      </div>
+    </div>
+
+    <div class="dz-main">
+      <div class="dz-bar">
+        <span class="dz-file"><span class="dir">design/</span>design-mode.html</span>
+        <div class="wseg"><span class="on">桌面</span><span>768</span><span>390</span></div>
+        <div class="bar-act">
+          <span class="mini">↻</span>
+          <span class="mini">浏览器 ↗</span>
+          <span class="mini">⌖</span>
+        </div>
+      </div>
+      <div class="dz-canvas">
+        <div class="dz-frame">
+          <div class="fhead"><i></i><i></i><i></i> sandbox 预览 · 与 App 环境隔离</div>
+          <div class="mock">
+            <div class="mrow">
+              <div class="box b1"><div class="tag">侧栏</div></div>
+              <div class="box b2"><div class="tag">主区（设计稿真实渲染）</div></div>
+            </div>
+            <div class="mrow"><div class="box b3"><div class="tag">工具条（刚被对话改成深色）</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dz-status">
+        <span class="fresh">● 对话刚改了这份稿 · 预览已自动刷新</span>
+        <span>最后修改 10:47</span>
+      </div>
+    </div>
+
+    <div class="chat">
+      <div class="chat-h">
+        <div>
+          <div class="t">设计对话</div>
+          <div class="sub">绑定 design-mode.html · 持续上下文</div>
+        </div>
+        <span class="new">＋ 新对话</span>
+      </div>
+      <div class="chat-msgs">
+        <div class="m-user">工具条改成深色底，宽度档位加个 1024</div>
+        <div class="m-ai">好，两处一起改：工具条底色换 --text 深底反白，宽度分段加 1024 档。</div>
+        <div class="m-tool"><span class="ed">EDIT</span><code>design/design-mode.html</code><span class="diff"><span class="add">+18</span> <span class="del">−6</span></span></div>
+        <div class="m-note">✓ 已改完 · 预览已刷新</div>
+        <div class="m-user">深色可以，但图标对比度不够</div>
+        <div class="m-ai">把工具条图标从 --dim 提到 rgba(255,255,255,.75)，hover 全白。</div>
+        <div class="m-tool"><span class="ed">EDIT</span><code>design/design-mode.html</code><span class="diff"><span class="add">+3</span> <span class="del">−3</span></span></div>
+        <div class="m-note">✓ 已改完 · 预览已刷新</div>
+      </div>
+      <div class="chat-c">
+        <div class="chat-in">描述要改的地方，或让它出新一版…</div>
+        <div class="chat-f">
+          <span class="chip"><span class="dot"></span>claude-opus-4.8</span>
+          <span class="chip">自动执行</span>
+          <span class="send">↵ 发送</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
