@@ -9,7 +9,7 @@
 import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 const require = createRequire(import.meta.url)
 const target = process.argv[2]
@@ -121,6 +121,8 @@ if (!ensureCached()) {
 }
 
 // 把缓存复制到 dest 并刷新 marker（复制成本极低，彻底杜绝 marker↔二进制 desync）
+// fresh clone + --ignore-scripts 下 build/Release 不存在（迁移后首次 dist 实测踩坑），先建目录
+mkdirSync(dirname(dest), { recursive: true })
 copyFileSync(cached, dest)
 if (!binaryLoads(dest)) {
   console.error(`[use-abi] binary for ${abiKey} fails to load after copy to dest`)
