@@ -30,6 +30,8 @@ export function parseLearnConfig(raw: string | null | undefined): LearnConfig | 
 }
 
 let child: ChildProcess | null = null
+/** 当前 child 对应的配置指纹（dir+port）——用户改配置后旧进程要先回收再按新配置拉起 */
+let childKey: string | null = null
 
 async function probe(port: number, timeoutMs = 1200): Promise<boolean> {
   try {
@@ -50,8 +52,20 @@ export async function ensureLearn(cfg: LearnConfig | null): Promise<LearnState> 
   if (await probe(cfg.port)) return { status: 'ready', url }
   const script = join(cfg.dir, 'start.sh')
   if (!existsSync(script)) return { status: 'error', url: null, message: `未找到 ${script}` }
-  if (!child || child.exitCode !== null) {
-    child = spawn('/bin/bash', [script], { cwd: cfg.dir, stdio: 'ignore' })
+  // 判活以 exit/error 事件为准（exitCode 对 signal 杀死的进程恒为 null，审计抓到的假活）；
+  // 配置变更（换目录/端口）→ 先回收旧进程再按新配置拉起
+  const key = `${cfg.dir}::${cfg.port}`
+  if (child && childKey !== key) stopLearn()
+  if (!child) {
+    const c = spawn('/bin/bash', [script], { cwd: cfg.dir, stdio: 'ignore' })
+    c.once('exit', () => {
+      if (child === c) child = null
+    })
+    c.once('error', () => {
+      if (child === c) child = null
+    })
+    child = c
+    childKey = key
   }
   for (let i = 0; i < 20; i++) {
     await new Promise((r) => setTimeout(r, 500))
@@ -64,9 +78,9 @@ export async function ensureLearn(cfg: LearnConfig | null): Promise<LearnState> 
   }
 }
 
-/** App 退出时回收自己 spawn 的进程（用户自己起的服务不在管辖内） */
+/** App 退出/换配置时回收自己 spawn 的进程（用户自己起的服务不在管辖内） */
 export function stopLearn(): void {
-  if (child && child.exitCode === null) {
+  if (child) {
     try {
       child.kill()
     } catch {
@@ -74,4 +88,5 @@ export function stopLearn(): void {
     }
   }
   child = null
+  childKey = null
 }

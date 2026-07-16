@@ -22,7 +22,8 @@ export default function LearnPane({ onBack, onOpenSettings }: Props): React.JSX.
     load()
   }, [load])
 
-  const port = st?.status === 'ready' && st.url ? new URL(st.url).port : null
+  // http 默认端口时 URL.port 为空串（审计边角：端口 80 白屏）——补回字面量
+  const port = st?.status === 'ready' && st.url ? new URL(st.url).port || '80' : null
 
   return (
     <div className="learn-page">

@@ -168,7 +168,7 @@ export default function SettingsPane({ activeCwd, onBack, onChanged }: Props): R
             <input
               value={learnDir}
               onChange={(e) => setLearnDir(e.target.value)}
-              placeholder="/…/daily-study（目录内需有 start.sh）"
+              placeholder="/path/to/平台目录（内含 start.sh）"
               spellCheck={false}
             />
           </div>
