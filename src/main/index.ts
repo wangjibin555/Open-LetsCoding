@@ -9,6 +9,7 @@ import { SecretVault } from './store/secrets'
 import { SessionService } from './engine/sessions'
 import { MemoryService } from './memory'
 import { CronService } from './cron'
+import { stopLearn } from './learn'
 import {
   consolidationProposalToInbox,
   gatewayConfigFrom,
@@ -558,6 +559,9 @@ app.whenReady().then(() => {
     deps.engine.closeAll()
   })
 })
+
+// D16：退出时回收学习平台里自己 spawn 的服务进程（用户自己起的不误杀）
+app.on('quit', () => stopLearn())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

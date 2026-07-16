@@ -16,7 +16,7 @@ interface Props {
   onOpen: (s: SessionListEntry) => void
   onNew: () => void
   onSearch: () => void
-  onNavigate: (screen: 'memory' | 'settings') => void
+  onNavigate: (screen: 'memory' | 'settings' | 'learn') => void
   /** 模式切换（TaskWork / Design 整页） */
   onModeSwitch: (mode: 'taskwork' | 'design') => void
   connected: boolean
@@ -312,6 +312,10 @@ export default function Sidebar(props: Props): React.JSX.Element {
           <span className="k">
             {stats.memoryCount} 条{stats.pendingCount > 0 ? ` · ${stats.pendingCount} 待确认` : ''}
           </span>
+        </button>
+        <button className="foot-row" onClick={() => props.onNavigate('learn')}>
+          ✦ 学习
+          <span className="k">知识平台</span>
         </button>
         <button className="foot-row" onClick={() => props.onNavigate('settings')}>
           <span className="conn" style={{ background: props.connected ? 'var(--ok)' : 'var(--idle)' }} />

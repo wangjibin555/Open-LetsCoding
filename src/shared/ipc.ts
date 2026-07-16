@@ -67,7 +67,8 @@ export const Channels = {
   ShellOpenUrl: 'shell:open-url',
   ShellTerminal: 'shell:terminal',
   GitDiff: 'git:diff',
-  DialogPickDir: 'dialog:pick-dir'
+  DialogPickDir: 'dialog:pick-dir',
+  LearnEnsure: 'learn:ensure'
 } as const
 
 /** live 会话 handle 前缀 → 所属模式（cron-=TaskWork、design-=Design，其余=Code）；主/渲染两侧共用 */
@@ -385,6 +386,16 @@ export interface AppSettings {
   appearance: string | null
   /** 设计稿 ↔ 会话映射 JSON（D11：`${cwd}::${file}` → sessionId，按稿绑对话） */
   designSessions: string | null
+  /** 学习平台配置 JSON（D16：{dir, port}；默认空——个人路径只进本机库不入仓） */
+  learn: string | null
+}
+
+/** D16 学习平台服务状态（main 探测/拉起后回报） */
+export interface LearnStateDto {
+  status: 'ready' | 'unconfigured' | 'error'
+  /** ready 时为 http://127.0.0.1:<port>（渲染层仅据此取端口，不接受任意地址） */
+  url: string | null
+  message?: string
 }
 
 export interface SecretStatusResult {

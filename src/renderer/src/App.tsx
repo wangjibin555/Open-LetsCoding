@@ -22,6 +22,7 @@ import { modeOfHandle } from './ModeTabs'
 import { replayToFlow } from './replay'
 import NewSessionModal from './NewSessionModal'
 import MemoryPane from './MemoryPane'
+import LearnPane from './LearnPane'
 import SettingsPane from './SettingsPane'
 import TaskWorkPane from './TaskWorkPane'
 import DesignPane from './DesignPane'
@@ -41,7 +42,7 @@ interface ActiveSession {
   resumeFrom?: string
 }
 
-type Screen = 'work' | 'memory' | 'settings' | 'taskwork' | 'design'
+type Screen = 'work' | 'memory' | 'settings' | 'taskwork' | 'design' | 'learn'
 
 const MODE_LABEL: Record<UiPermissionMode, string> = {
   auto: '自动执行',
@@ -815,6 +816,14 @@ export default function App(): React.JSX.Element {
             if (active?.cwd) void window.letscoding.memory.list(active.cwd).then(setRailMemories)
           }}
         />
+        {permOverlay}
+      </>
+    )
+  }
+  if (screen === 'learn') {
+    return (
+      <>
+        <LearnPane onBack={() => setScreen('work')} onOpenSettings={() => setScreen('settings')} />
         {permOverlay}
       </>
     )

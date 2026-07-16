@@ -34,6 +34,9 @@ export default function SettingsPane({ activeCwd, onBack, onChanged }: Props): R
   const [defaultModel, setDefaultModel] = useState('')
   const [smallFastModel, setSmallFastModel] = useState('')
   const [appearance, setAppearance] = useState<Appearance | null>(null)
+  const [learnDir, setLearnDir] = useState('')
+  const [learnPort, setLearnPort] = useState('')
+  const [learnSaved, setLearnSaved] = useState(false)
 
   const refreshPanel = useCallback(async () => {
     setModels(await window.letscoding.models.list())
@@ -46,6 +49,13 @@ export default function SettingsPane({ activeCwd, onBack, onChanged }: Props): R
       setDefaultModel(s.defaultModel ?? '')
       setSmallFastModel(s.smallFastModel ?? '')
       setAppearance(parseAppearance(s.appearance))
+      try {
+        const l = s.learn ? (JSON.parse(s.learn) as { dir?: string; port?: number }) : null
+        setLearnDir(l?.dir ?? '')
+        setLearnPort(l?.port ? String(l.port) : '')
+      } catch {
+        // 坏配置视为未配置
+      }
     })
     void window.letscoding.settings.secretStatus().then(setStatus)
     void refreshPanel()
@@ -64,6 +74,17 @@ export default function SettingsPane({ activeCwd, onBack, onChanged }: Props): R
       await refreshPanel()
       onChanged()
     }
+  }
+
+  // D16 学习平台配置：{dir, port} 只进本机 state.db，个人路径不入仓
+  async function saveLearn(): Promise<void> {
+    const dir = learnDir.trim()
+    const n = Number(learnPort.trim() || '8989')
+    const port = Number.isInteger(n) && n > 0 && n <= 65535 ? n : 8989
+    await window.letscoding.settings.set({ learn: JSON.stringify({ dir, port }) })
+    setLearnPort(String(port))
+    setLearnSaved(true)
+    setTimeout(() => setLearnSaved(false), 1500)
   }
 
   async function pickDefault(kind: 'default' | 'small', id: string): Promise<void> {
@@ -136,6 +157,37 @@ export default function SettingsPane({ activeCwd, onBack, onChanged }: Props): R
           {status && !status.encryptionAvailable && (
             <div style={{ fontSize: 12, color: 'var(--err)' }}>系统加密存储不可用，无法安全保存 key</div>
           )}
+        </div>
+
+        <div className="card">
+          <h3>
+            学习平台 <span className="sub">侧栏「学习」页嵌入的本地服务</span>
+          </h3>
+          <div className="kv">
+            <span className="lab">平台目录</span>
+            <input
+              value={learnDir}
+              onChange={(e) => setLearnDir(e.target.value)}
+              placeholder="/…/daily-study（目录内需有 start.sh）"
+              spellCheck={false}
+            />
+          </div>
+          <div className="kv">
+            <span className="lab">端口</span>
+            <input
+              value={learnPort}
+              onChange={(e) => setLearnPort(e.target.value)}
+              placeholder="8989"
+              spellCheck={false}
+            />
+          </div>
+          <div className="kv">
+            <span className="lab" />
+            <button className="mini" onClick={() => void saveLearn()}>
+              保存
+            </button>
+            {learnSaved && <span style={{ fontSize: 11.5, color: 'var(--ok)' }}>已保存</span>}
+          </div>
         </div>
 
         <div className="card">

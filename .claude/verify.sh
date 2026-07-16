@@ -58,6 +58,16 @@ else
   fail "G13 bypass guard: bypass must not use SDK raw skip mode; danger gate must stay wired (D14)"
 fi
 
+# G14 · 学习平台嵌入护栏（D16 红线）：iframe 仅指向本机回环 + 配置端口（且是组件里唯一的 src 模板）；
+# 服务拉起仅限用户配置目录下的固定脚本名 start.sh（不接受任意命令）
+if grep -q 'src={`http://127.0.0.1:' src/renderer/src/LearnPane.tsx \
+  && [ "$(grep -c 'src={`' src/renderer/src/LearnPane.tsx)" = "1" ] \
+  && grep -q "join(cfg.dir, 'start.sh')" src/main/learn.ts; then
+  pass "G14 learn embed: loopback-only iframe + fixed start.sh spawn"
+else
+  fail "G14 learn embed: iframe must stay on 127.0.0.1 and spawn only start.sh (D16)"
+fi
+
 # G11 · 预览供稿隔离 + 滚动保持（D12.3）：lcdesign:// 供稿必须带网络全禁 CSP；滚动恢复接线在位
 if grep -q "default-src 'none'" src/main/design.ts \
   && grep -q "dz-restore" src/main/design.ts \

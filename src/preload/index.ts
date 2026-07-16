@@ -179,6 +179,12 @@ const api = {
       ipcRenderer.invoke(Channels.DialogPickDir, { defaultPath })
   },
 
+  learn: {
+    /** D16 学习平台：探测/拉起本地服务，返回可嵌地址或错误态 */
+    ensure: (): Promise<import('../shared/ipc').LearnStateDto> =>
+      ipcRenderer.invoke(Channels.LearnEnsure)
+  },
+
   git: {
     diff: (cwd: string): Promise<import('../shared/ipc').GitDiffResult> =>
       ipcRenderer.invoke(Channels.GitDiff, { cwd })

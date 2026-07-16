@@ -31,6 +31,7 @@ import { execFile, spawn } from 'node:child_process'
 import { isMainSession } from './engine/sessionFilter'
 import { readSubagents } from './engine/subagents'
 import { gitDiffInfo } from './gitinfo'
+import { ensureLearn, parseLearnConfig } from './learn'
 import { readSessionTasks } from './tasks'
 import type { MemoryService } from './memory'
 import type { StateStore } from './store'
@@ -499,7 +500,8 @@ export function registerIpc(deps: IpcDeps): void {
       lastSessionId: deps.store?.getSetting('last_session_id') ?? null,
       panelLayout: deps.store?.getSetting('panel_layout') ?? null,
       appearance: deps.store?.getSetting('appearance') ?? null,
-      designSessions: deps.store?.getSetting('design_sessions') ?? null
+      designSessions: deps.store?.getSetting('design_sessions') ?? null,
+      learn: deps.store?.getSetting('learn') ?? null
     }
   })
 
@@ -518,6 +520,13 @@ export function registerIpc(deps: IpcDeps): void {
       deps.store.setSetting('appearance', p.appearance)
     if (p.designSessions !== undefined && p.designSessions !== null)
       deps.store.setSetting('design_sessions', p.designSessions)
+    if (p.learn !== undefined && p.learn !== null) deps.store.setSetting('learn', p.learn)
+  })
+
+  // D16 学习平台：探测/拉起本地服务。配置仅来自用户在设置页写入的 settings.learn；
+  // 本 IPC 只由用户点击触发（模型无 App IPC 触达面），spawn 目标固定为 <dir>/start.sh。
+  ipcMain.handle(Channels.LearnEnsure, () => {
+    return ensureLearn(parseLearnConfig(deps.store?.getSetting('learn')))
   })
 
   ipcMain.handle(Channels.SecretSet, (_e, p: { value: string }) => {
