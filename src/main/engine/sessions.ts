@@ -25,7 +25,12 @@ import {
 } from './consolidationTool'
 import { CONSOLIDATE_DISALLOWED_TOOLS } from './consolidateGuard'
 import { SCHEDULED_DISALLOWED_TOOLS, SCHEDULED_MAX_TURNS } from './scheduledGuard'
-import { shouldAutoAllow, UI_TO_SDK_MODE, type UiPermissionMode } from './permissionPolicy'
+import {
+  allowResult,
+  shouldAutoAllow,
+  UI_TO_SDK_MODE,
+  type UiPermissionMode
+} from './permissionPolicy'
 
 export type { MemoryProposal, ConsolidationProposal }
 export type { UiPermissionMode } from './permissionPolicy'
@@ -102,6 +107,13 @@ interface LiveSession {
 interface PendingPerm {
   resolve: (r: PermissionResult) => void
   suggestions?: PermissionUpdate[]
+  /**
+   * canUseTool 收到的**原始入参**。放行时必须原样回传成 `updatedInput`——
+   * SDK 的 PermissionResult 是个 union，allow 分支运行时**必填** `updatedInput: record`
+   * （`sdk.d.ts` 标的是可选，与运行时不一致，以运行时为准）。少这个字段，
+   * union 两条分支都不匹配 → 整个权限请求以 ZodError 失败，用户点了「同意」也执行不了。
+   */
+  toolInput: Record<string, unknown>
 }
 
 export class SessionService {
@@ -250,11 +262,10 @@ export class SessionService {
       })
       return
     }
-    // 「总是允许（本会话）」：回传 SDK 的建议规则集，本会话内同类调用不再问
+    // 「总是允许（本会话）」：回传 SDK 的建议规则集，本会话内同类调用不再问。
+    // 放行结果一律经 allowResult 构造——它是唯一保证 updatedInput 在位的地方（#5）。
     pending.resolve(
-      opts?.always && pending.suggestions?.length
-        ? { behavior: 'allow', updatedPermissions: pending.suggestions }
-        : { behavior: 'allow' }
+      allowResult(pending.toolInput, opts?.always ? pending.suggestions : undefined)
     )
   }
 
@@ -322,13 +333,13 @@ export class SessionService {
     const danger = matchDanger(rules, toolName, toolInput)
     // D14 全权委托：非危险调用全自动放行（危险清单仍走下方弹卡，D7 硬门不动摇）
     if (shouldAutoAllow(this.live.get(handle)?.uiMode, danger)) {
-      return Promise.resolve({ behavior: 'allow' })
+      return Promise.resolve(allowResult(toolInput))
     }
     const requestId = `perm-${++this.permSeq}`
     // D7 红线：危险命令绝不提供「总是允许」——每次都必须人肉确认
     const usableSuggestions = danger ? undefined : suggestions
     return new Promise<PermissionResult>((resolve) => {
-      this.pendingPerms.set(requestId, { resolve, suggestions: usableSuggestions })
+      this.pendingPerms.set(requestId, { resolve, suggestions: usableSuggestions, toolInput })
       this.cb.onPermissionRequest({
         requestId,
         handle,
