@@ -27,10 +27,12 @@ import { CONSOLIDATE_DISALLOWED_TOOLS } from './consolidateGuard'
 import { SCHEDULED_DISALLOWED_TOOLS, SCHEDULED_MAX_TURNS } from './scheduledGuard'
 import {
   allowResult,
+  buildQuestionResult,
   shouldAutoAllow,
   UI_TO_SDK_MODE,
   type UiPermissionMode
 } from './permissionPolicy'
+import type { QuestionDto } from '../../shared/ipc'
 
 export type { MemoryProposal, ConsolidationProposal }
 export type { UiPermissionMode } from './permissionPolicy'
@@ -84,6 +86,8 @@ export interface LiveSessionInfo {
 export interface EngineCallbacks {
   onStream: (handle: string, msg: unknown) => void
   onPermissionRequest: (req: PermissionRequest) => void
+  /** D18 AskUserQuestion：模型发起多选提问 → 渲染问题卡收集答案 */
+  onQuestionRequest: (req: QuestionRequest) => void
   /** propose_memory 工具调用 → 收件箱（不写盘，D6）。未接线时传 undefined 表示不注入工具。 */
   onMemoryProposal?: (p: MemoryProposal) => void
   /** propose_consolidation 工具调用 → 整理收件箱（不写盘/不删源，D9） */
@@ -104,6 +108,18 @@ interface LiveSession {
   uiMode: UiPermissionMode
 }
 
+// D18 AskUserQuestion：模型发起的多选提问请求（结构镜像 shared 的 QuestionRequestPayload）
+export interface QuestionRequest {
+  requestId: string
+  handle: string
+  questions: QuestionDto[]
+}
+
+interface PendingQuestion {
+  resolve: (r: PermissionResult) => void
+  questions: QuestionDto[]
+}
+
 interface PendingPerm {
   resolve: (r: PermissionResult) => void
   suggestions?: PermissionUpdate[]
@@ -119,6 +135,8 @@ interface PendingPerm {
 export class SessionService {
   private live = new Map<string, LiveSession>()
   private pendingPerms = new Map<string, PendingPerm>()
+  private pendingQuestions = new Map<string, PendingQuestion>()
+  private questionSeq = 0
   private permSeq = 0
 
   constructor(private readonly cb: EngineCallbacks) {}
@@ -269,6 +287,29 @@ export class SessionService {
     )
   }
 
+  // D18：AskUserQuestion → 发问题请求给渲染层，待答；答案经 resolveQuestion 回填 SDK
+  private askQuestion(handle: string, toolInput: Record<string, unknown>): Promise<PermissionResult> {
+    const raw = toolInput['questions']
+    const questions = (Array.isArray(raw) ? raw : []) as QuestionDto[]
+    const requestId = `q-${++this.questionSeq}`
+    return new Promise<PermissionResult>((resolve) => {
+      this.pendingQuestions.set(requestId, { resolve, questions })
+      this.cb.onQuestionRequest({ requestId, handle, questions })
+    })
+  }
+
+  /** 渲染层回传答案（或取消）→ 整形为 SDK 工具结果 resolve 掉挂起的提问 */
+  resolveQuestion(
+    requestId: string,
+    answers?: Record<string, string | string[]>,
+    cancel?: boolean
+  ): void {
+    const pending = this.pendingQuestions.get(requestId)
+    if (!pending) return
+    this.pendingQuestions.delete(requestId)
+    pending.resolve(buildQuestionResult(pending.questions, answers, cancel))
+  }
+
   liveSessions(): LiveSessionInfo[] {
     return [...this.live.values()].map((s) => ({
       handle: s.handle,
@@ -329,6 +370,11 @@ export class SessionService {
     decisionReason?: string,
     suggestions?: PermissionUpdate[]
   ): Promise<PermissionResult> {
+    // D18：AskUserQuestion 不是权限门、是取答案——拦在最前（连 bypass 全权委托档也要真的问，
+    // 否则自动放行会回一个没有 answers 的结果，SDK 拿不到 tool_result 而报错）。
+    if (toolName === 'AskUserQuestion') {
+      return this.askQuestion(handle, toolInput)
+    }
     const rules = this.cb.getDangerRules()
     const danger = matchDanger(rules, toolName, toolInput)
     // D14 全权委托：非危险调用全自动放行（危险清单仍走下方弹卡，D7 硬门不动摇）

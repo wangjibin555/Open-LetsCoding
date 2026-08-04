@@ -154,6 +154,29 @@ else
   fail "G16 public boundary: tracked files must not carry internal context (private repo refs, internal hosts, local paths)"
 fi
 
+# G17 · AskUserQuestion 提问护栏（D18 红线，issue #10）：它**不是权限门、是取答案**。
+# SDK 契约：allow 分支必须经 updatedInput 回传 { questions, answers } 当 tool_result；
+# 取消/空答案 → deny（模型收到明确拒绝，而不是一个没有 answers 的空结果）。
+ASK_OK=1
+grep -q "toolName === 'AskUserQuestion'" src/main/engine/sessions.ts || ASK_OK=0
+grep -q "buildQuestionResult" src/main/engine/sessions.ts || ASK_OK=0
+grep -q "behavior: 'allow', updatedInput: { questions, answers }" src/main/engine/permissionPolicy.ts || ASK_OK=0
+# **真红线是顺序**：必须拦在 shouldAutoAllow 之前——连 bypass 全权委托档也要真的问。
+# 只验「两个字符串都存在」验不出这一条：把拦截挪到 shouldAutoAllow 之后，
+# bypass 档会自动放行并回一个没有 answers 的结果，而字符串断言全绿。故比行号。
+Q_LINE=$(grep -n "toolName === 'AskUserQuestion'" src/main/engine/sessions.ts | head -1 | cut -d: -f1)
+A_LINE=$(grep -n "shouldAutoAllow(this.live.get(handle)?.uiMode" src/main/engine/sessions.ts | head -1 | cut -d: -f1)
+if [ -n "$Q_LINE" ] && [ -n "$A_LINE" ]; then
+  [ "$Q_LINE" -lt "$A_LINE" ] || ASK_OK=0
+else
+  ASK_OK=0
+fi
+if [ "$ASK_OK" -eq 1 ]; then
+  pass "G17 ask-question: intercepted before the perm gate, answers wired to updatedInput"
+else
+  fail "G17 ask-question: AskUserQuestion must be intercepted BEFORE shouldAutoAllow and answered via updatedInput (D18)"
+fi
+
 # G3 · 无明文 key（D8 红线）：追踪文件中不得出现网关/API key 形态字符串
 if git grep -nE "sk-[A-Za-z0-9_-]{16,}" -- ':!*.lock' ':!package-lock.json' >/dev/null 2>&1; then
   fail "G3 secrets: plaintext key-like string found in tracked files"

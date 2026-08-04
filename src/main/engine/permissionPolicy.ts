@@ -47,3 +47,17 @@ export function shouldAutoAllow(
 ): boolean {
   return uiMode === 'bypass' && !dangerMatched
 }
+
+// D18 AskUserQuestion：把用户在问题卡上的选择整形成 SDK 的工具结果。
+// 契约（SDK user-input）：allow 分支必须回传 { questions, answers }——SDK 用 updatedInput 当 tool_result；
+// 取消/无答案 → deny（模型收到拒绝，不会拿到空结果而报错）。纯函数，离线可测。
+export function buildQuestionResult(
+  questions: unknown,
+  answers: Record<string, string | string[]> | undefined,
+  cancel?: boolean
+): PermissionResult {
+  if (cancel || !answers || Object.keys(answers).length === 0) {
+    return { behavior: 'deny', message: '用户在 LetsCoding 中取消了提问' }
+  }
+  return { behavior: 'allow', updatedInput: { questions, answers } }
+}

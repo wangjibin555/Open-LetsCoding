@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { allowResult, shouldAutoAllow, UI_TO_SDK_MODE } from './permissionPolicy'
+import {
+  allowResult,
+  buildQuestionResult,
+  shouldAutoAllow,
+  UI_TO_SDK_MODE
+} from './permissionPolicy'
 
 // issue #5：allow 分支缺 updatedInput → SDK 运行时 schema 的 union 两条都不匹配 →
 // `ZodError: expected record, received undefined`，用户点了「同意」工具也执行不了。
@@ -59,5 +64,32 @@ describe('shouldAutoAllow（bypass 放行真值表）', () => {
     expect(shouldAutoAllow(undefined, null)).toBe(false)
     // 「任意」含危险命中：非 bypass 档 + 危险同样不经此路放行（走弹卡）
     expect(shouldAutoAllow('auto', 'rm -rf*')).toBe(false)
+  })
+})
+
+describe('buildQuestionResult（D18 AskUserQuestion 答案整形）', () => {
+  const questions = [{ question: 'Q1', header: 'h', options: [], multiSelect: false }]
+
+  it('有答案 → allow 且回传 { questions, answers } 当 tool_result', () => {
+    const answers = { Q1: 'A' }
+    expect(buildQuestionResult(questions, answers)).toEqual({
+      behavior: 'allow',
+      updatedInput: { questions, answers }
+    })
+  })
+
+  it('多选答案数组原样进 answers', () => {
+    const answers = { Q1: ['A', 'B'] }
+    const r = buildQuestionResult(questions, answers)
+    expect(r).toMatchObject({ behavior: 'allow', updatedInput: { answers: { Q1: ['A', 'B'] } } })
+  })
+
+  it('取消 → deny（模型收到拒绝，不会拿空结果报错）', () => {
+    expect(buildQuestionResult(questions, { Q1: 'A' }, true)).toMatchObject({ behavior: 'deny' })
+  })
+
+  it('无答案 / 空答案 → deny（负向红线：绝不返回 behavior:allow 且缺 answers）', () => {
+    expect(buildQuestionResult(questions, undefined)).toMatchObject({ behavior: 'deny' })
+    expect(buildQuestionResult(questions, {})).toMatchObject({ behavior: 'deny' })
   })
 })

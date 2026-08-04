@@ -7,6 +7,8 @@ import {
   type DangerRuleDto,
   type GatewayTestResult,
   type PermRespondPayload,
+  type QuestionRequestPayload,
+  type QuestionRespondPayload,
   type PermissionRequestPayload,
   type ReplayMessage,
   type SecretStatusResult,
@@ -62,6 +64,17 @@ const api = {
       const listener = (_: unknown, req: PermissionRequestPayload): void => cb(req)
       ipcRenderer.on(Channels.PermRequest, listener)
       return () => ipcRenderer.removeListener(Channels.PermRequest, listener)
+    }
+  },
+
+  // D18 AskUserQuestion：模型发起的多选提问，渲染层弹卡收集答案
+  question: {
+    respond: (p: QuestionRespondPayload): Promise<void> =>
+      ipcRenderer.invoke(Channels.QuestionRespond, p),
+    onRequest: (cb: (req: QuestionRequestPayload) => void): Unsubscribe => {
+      const listener = (_: unknown, req: QuestionRequestPayload): void => cb(req)
+      ipcRenderer.on(Channels.QuestionRequest, listener)
+      return () => ipcRenderer.removeListener(Channels.QuestionRequest, listener)
     }
   },
 

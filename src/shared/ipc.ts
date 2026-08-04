@@ -36,6 +36,8 @@ export const Channels = {
   SessionStream: 'session:stream', // M→R 推送
   PermRequest: 'perm:request', // M→R 推送
   PermRespond: 'perm:respond',
+  QuestionRequest: 'question:request', // M→R 推送（D18 AskUserQuestion）
+  QuestionRespond: 'question:respond',
   ModelsList: 'models:list',
   ModelToggle: 'models:toggle',
   SpendSummary: 'spend:summary',
@@ -404,4 +406,32 @@ export interface ReplayMessage {
   uuid: string
   message: unknown
   parent_tool_use_id: string | null
+}
+
+// D18 AskUserQuestion：模型发起的多选提问（SDK 契约见 permissionPolicy.buildQuestionResult）
+export interface QuestionOptionDto {
+  label: string
+  description?: string
+}
+export interface QuestionDto {
+  /** 完整问题文本，同时作为 answers 的 key */
+  question: string
+  /** 简短标签（SDK 约定 ≤12 字符） */
+  header: string
+  /** 2-4 个候选项 */
+  options: QuestionOptionDto[]
+  /** true 则可多选 */
+  multiSelect: boolean
+}
+export interface QuestionRequestPayload {
+  requestId: string
+  handle: string
+  questions: QuestionDto[]
+}
+export interface QuestionRespondPayload {
+  requestId: string
+  /** question 文本 → 选中项 label（多选为数组，或用户自填文本）；cancel 时可省 */
+  answers?: Record<string, string | string[]>
+  /** 用户取消 → main 侧回 deny */
+  cancel?: boolean
 }

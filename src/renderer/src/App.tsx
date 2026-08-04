@@ -8,6 +8,7 @@ import type {
   GroupDto,
   MemoryFileDto,
   PermissionRequestPayload,
+  QuestionRequestPayload,
   GitDiffResult,
   SessionListEntry,
   SessionTaskDto,
@@ -15,6 +16,7 @@ import type {
   UiPermissionMode
 } from '../../shared/ipc'
 import { useSessionStream, type DiffData, type FlowItem } from './useStream'
+import QuestionCard from './QuestionCard'
 import Markdown from './Markdown'
 import PermCard from './PermCard'
 import TypeText from './TypeText'
@@ -77,6 +79,8 @@ export default function App(): React.JSX.Element {
   const [showSwitcher, setShowSwitcher] = useState(false)
   const [connected, setConnected] = useState(false)
   const [perm, setPerm] = useState<PermissionRequestPayload | null>(null)
+  // D18 AskUserQuestion：模型发起的多选提问，未答期间会话挂起等待
+  const [question, setQuestion] = useState<QuestionRequestPayload | null>(null)
   // 草稿按会话隔离：A 会话打一半切到 B 不串
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [stats, setStats] = useState({ memoryCount: 0, pendingCount: 0, spendText: null as string | null })
@@ -246,7 +250,11 @@ export default function App(): React.JSX.Element {
     void refreshModels()
     void refreshStats()
     const unsub = window.letscoding.perm.onRequest(setPerm)
-    return unsub
+    const unsubQ = window.letscoding.question.onRequest(setQuestion)
+    return () => {
+      unsub()
+      unsubQ()
+    }
   }, [refreshSessions, refreshModels, refreshStats])
 
   // 会话连续性：应用重开自动回到上次活跃会话（直接续聊态；模型未就绪则先回放、就绪后自动升级）
@@ -859,9 +867,28 @@ export default function App(): React.JSX.Element {
 
   // M20-A：非 Code 屏的权限请求以全局浮层就地处理（Code 屏保持聊天列内联，行为不变）
   const permMode = modeOfHandle(perm?.handle ?? null)
+  // D18：问题卡提交/取消 → 答案回填 SDK（取消走 deny，模型收到拒绝而非空结果）
+  function respondQuestion(answers: Record<string, string | string[]>): void {
+    if (!question) return
+    void window.letscoding.question.respond({ requestId: question.requestId, answers })
+    setQuestion(null)
+  }
+  function cancelQuestion(): void {
+    if (!question) return
+    void window.letscoding.question.respond({ requestId: question.requestId, cancel: true })
+    setQuestion(null)
+  }
+
   const permOverlay = perm ? (
     <div className="perm-overlay">
       <PermCard perm={perm} onRespond={respondPerm} />
+    </div>
+  ) : null
+
+  // D18：问题卡在任一屏均以全局浮层就地处理（Code 屏另有聊天列内联，见下）
+  const questionOverlay = question ? (
+    <div className="perm-overlay">
+      <QuestionCard question={question} onSubmit={respondQuestion} onCancel={cancelQuestion} />
     </div>
   ) : null
 
@@ -878,6 +905,7 @@ export default function App(): React.JSX.Element {
           }}
         />
         {permOverlay}
+        {questionOverlay}
       </>
     )
   }
@@ -897,6 +925,7 @@ export default function App(): React.JSX.Element {
           }}
         />
         {permOverlay}
+        {questionOverlay}
       </>
     )
   }
@@ -920,6 +949,7 @@ export default function App(): React.JSX.Element {
           onTaskWork={() => setScreen('taskwork')}
         />
         {permOverlay}
+        {questionOverlay}
       </>
     )
   }
@@ -943,6 +973,7 @@ export default function App(): React.JSX.Element {
           }}
         />
         {permOverlay}
+        {questionOverlay}
       </>
     )
   }
