@@ -680,6 +680,7 @@ body.col-resizing .col-rsz {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative; /* 拖入遮罩 .drop-veil / .drop-note 的定位基准（#7） */
 }
 .sess-head {
   display: flex;
@@ -3563,4 +3564,51 @@ table.rt code {
 .dz-send:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* 外部拖入（#7）：接收区＝整个工作区，拖入态给明确的落点提示 */
+.main.drag-over {
+  outline: 2px dashed var(--acc, #6b8afd);
+  outline-offset: -8px;
+}
+.drop-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg, #14161a) 78%, transparent);
+  pointer-events: none; /* 别把 drop 事件从 main 手里抢走 */
+}
+.drop-veil-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 26px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--panel, #1c1f26);
+  border: 1px solid var(--line, #2b3038);
+}
+.drop-veil-in span {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.drop-note {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 41;
+  max-width: 70%;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--panel, #1c1f26);
+  border: 1px solid var(--line, #2b3038);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 28%);
 }
