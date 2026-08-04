@@ -100,7 +100,7 @@ fi
 # ③ 红线：拖入只改草稿，不得触发发送、不得写文件。
 DROP_OK=1
 grep -qE "webContents\.on\('will-navigate'" src/main/index.ts || DROP_OK=0
-#    注册了还得真拦：`e.preventDefault()` 泛匹配会被 before-quit 那处喂饱（私有线实测放行过），
+#    注册了还得真拦：`e.preventDefault()` 泛匹配会被 before-quit 那处喂饱（实测放行过），
 #    所以咬 will-navigate 分支里那一行的完整形态。
 grep -qF "if (!inShell) e.preventDefault()" src/main/index.ts || DROP_OK=0
 grep -qE "webContents\.setWindowOpenHandler\(" src/main/index.ts || DROP_OK=0
@@ -113,13 +113,45 @@ grep -rqE "\.dataTransfer\.files\[[0-9]+\]\.path|\bf\.path\b|file\.path\b" src/r
 # 统一入口：两处 onDrop 都必须走 addDroppedFiles，不许一处只吃图片另一处全收
 test "$(grep -c "addDroppedFiles(Array.from(e.dataTransfer.files))" src/renderer/src/App.tsx)" = "2" || DROP_OK=0
 # 红线：拖入路径里不得出现发送动作。取**整个函数体**（awk 到闭合行），
-# 固定行窗（-A12）盖不住 21 行的函数体，私有线实测漏过注入在末尾的 send()。
+# 固定行窗（-A12）盖不住 21 行的函数体，实测漏过注入在末尾的 send()。
 awk '/const addDroppedFiles = useCallback/,/^  \)$/' src/renderer/src/App.tsx \
   | grep -qE "\bsend\(|sendMessage|submit\(" && DROP_OK=0
 if [ "$DROP_OK" -eq 1 ]; then
   pass "G15 external drop: navigation fenced, paths via webUtils, draft-only"
 else
   fail "G15 external drop: must fence will-navigate, take paths from webUtils (File.path is gone since Electron 32), and only touch the draft (#7)"
+fi
+
+# G16 · 公开线信息边界（红线）：**本仓是 PUBLIC 仓库**，追踪文件里不得出现
+# 内部私有信息。G3 只挡凭据形态，挡不住「内部语境」——而后者同样是泄露：
+# 私有仓库/内部编号的交叉引用、内部服务域名、本机绝对路径、内部业务方与项目代号。
+# 已实际发生过一次：同步修复时把内部研发语境写进了注释与提交信息，本 gate 是那次的补救。
+#
+# ⚠️ 本 gate 只能管**追踪文件**。提交信息与 GitHub 上的 issue/PR 正文不在它的射程内，
+#    那两处只能靠人：推之前自己读一遍要发出去的文字。
+PUB_OK=1
+# ① 内部语境的文字标记 + 内部服务域名 + 知识库路径。全仓禁。
+LEAK_PAT='内部线|私有线|私有仓库|同源于私有|hicaspian|Knowledge-base'
+#    本文件自身必须排除：它非得写出那些词才能禁它们，不排除就是永红的自触发闸
+#    （同一形态今天已踩过一次：文档注释把断言喂饱）。
+SCOPE=". :!*.lock :!package-lock.json :!.claude/verify.sh"
+if git grep -nIE "$LEAK_PAT" -- $SCOPE >/dev/null 2>&1; then
+  PUB_OK=0
+  echo "   ↳ 内部语境："
+  git grep -nIE "$LEAK_PAT" -- $SCOPE | head -6 | sed 's/^/     /'
+fi
+# ② 本机绝对家目录路径：**只在生产代码里禁**。
+#    测试夹具与设计稿用 /Users/dev 这类占位路径是正当的，一并禁掉会让本 gate 误报——
+#    而一个会误报的 gate 迟早被人关掉，比没有更糟。
+if git grep -nIE "/Users/[A-Za-z0-9._-]+/" -- 'src' ':!*.test.ts' ':!*.test.tsx' >/dev/null 2>&1; then
+  PUB_OK=0
+  echo "   ↳ 生产代码里的绝对家目录路径："
+  git grep -nIE "/Users/[A-Za-z0-9._-]+/" -- 'src' ':!*.test.ts' ':!*.test.tsx' | head -6 | sed 's/^/     /'
+fi
+if [ "$PUB_OK" -eq 1 ]; then
+  pass "G16 public boundary: no internal-only references in tracked files"
+else
+  fail "G16 public boundary: tracked files must not carry internal context (private repo refs, internal hosts, local paths)"
 fi
 
 # G3 · 无明文 key（D8 红线）：追踪文件中不得出现网关/API key 形态字符串
