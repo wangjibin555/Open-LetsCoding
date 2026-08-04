@@ -17,6 +17,7 @@ import {
   type ImageAttachmentDto,
   type MemoryType,
   type PermRespondPayload,
+  type QuestionRespondPayload,
   type ReplayMessage,
   type SecretStatusResult,
   type SessionListEntry,
@@ -382,6 +383,11 @@ export function registerIpc(deps: IpcDeps): void {
     engine.resolvePermission(p.requestId, p.allow, { always: p.always, message: p.message })
   })
 
+  // D18 AskUserQuestion：渲染层回传答案/取消 → 整形为 SDK 工具结果
+  ipcMain.handle(Channels.QuestionRespond, (_e, p: QuestionRespondPayload) => {
+    engine.resolveQuestion(p.requestId, p.answers, p.cancel)
+  })
+
   // ---- rule management (D7：builtin 不可关/不可删由 store 层强制) ----
   const mustStore = (): NonNullable<IpcDeps['store']> => {
     if (!deps.store) throw new Error('state store unavailable')
@@ -705,6 +711,15 @@ export function permToRenderer(deps: IpcDeps, req: unknown): void {
   const cmd =
     typeof r?.input?.['command'] === 'string' ? `：${(r.input!['command'] as string).slice(0, 80)}` : ''
   notifyIfBackground(win, 'LetsCoding · 等待权限确认', `${r?.toolName ?? '工具'}${cmd}`)
+}
+
+// D18：模型发起多选提问 → 推给渲染层弹问题卡；后台时系统通知提示需要用户选择
+export function questionToRenderer(deps: IpcDeps, req: unknown): void {
+  const win = deps.getWindow()
+  win?.webContents.send(Channels.QuestionRequest, req)
+  const r = req as { questions?: { header?: string }[] }
+  const head = r?.questions?.[0]?.header
+  notifyIfBackground(win, 'LetsCoding · 需要你的选择', head ? `问题：${head}` : '会话在等待你回答')
 }
 
 /** propose_memory → 收件箱（不写盘）→ 以流事件通知 UI 内联展示 */

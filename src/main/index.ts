@@ -14,6 +14,7 @@ import {
   gatewayConfigFrom,
   memoryProposalToInbox,
   permToRenderer,
+  questionToRenderer,
   registerIpc,
   streamToRenderer,
   type IpcDeps
@@ -531,6 +532,7 @@ app.whenReady().then(() => {
       deps.cron?.onStream(handle, msg)
     },
     onPermissionRequest: (req) => permToRenderer(deps, req),
+    onQuestionRequest: (req) => questionToRenderer(deps, req),
     onMemoryProposal: (p) => memoryProposalToInbox(deps, p),
     onConsolidationProposal: (p) => consolidationProposalToInbox(deps, p),
     getDangerRules: () => store?.listDangerRules() ?? [],

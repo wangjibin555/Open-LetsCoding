@@ -3612,3 +3612,123 @@ table.rt code {
   border: 1px solid var(--line, #2b3038);
   box-shadow: 0 6px 20px rgb(0 0 0 / 28%);
 }
+/* D18 AskUserQuestion 多选提问卡 */
+.q-card {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 13px 15px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 86%;
+}
+.perm-overlay .q-card {
+  max-width: none;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22);
+}
+.q-head {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--acc);
+}
+.q-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.q-title {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.q-chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--acc);
+  background: var(--acc-soft);
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+.q-multi {
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--dim);
+}
+.q-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.q-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 8px 11px;
+  cursor: pointer;
+  font: inherit;
+  transition: 0.13s;
+}
+.q-opt:hover {
+  border-color: var(--acc);
+}
+.q-opt.on {
+  border-color: var(--acc);
+  background: var(--acc-soft);
+}
+.q-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dim);
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  margin-top: 1px;
+}
+.q-mark.box {
+  border-radius: 4px;
+}
+.q-opt.on .q-mark {
+  background: var(--acc);
+  border-color: var(--acc);
+}
+.q-opt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.q-opt-label {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.q-opt-desc {
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.5;
+}
+.q-other {
+  font: inherit;
+  font-size: 12.5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: var(--panel);
+  outline: none;
+}
+.q-other:focus {
+  border-color: var(--acc);
+}
+.q-acts {
+  display: flex;
+  gap: 8px;
+}
