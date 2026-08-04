@@ -91,26 +91,88 @@ export default function App(): React.JSX.Element {
   // 图片附件（粘贴/拖拽），与草稿一样按会话隔离；上限 4 张 / 单张 5MB
   const [attsMap, setAttsMap] = useState<Record<string, { mediaType: string; data: string; preview: string }[]>>({})
   const atts = attsMap[draftKey] ?? []
+  // 拖入/粘贴被拒时的可见回执（#7）。原实现两处超限直接 return，
+  // 用户看到的就是「拖了没反应」——静默丢弃比拒绝更糟，它让人以为功能坏了。
+  const [dropNote, setDropNote] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  useEffect(() => {
+    if (!dropNote) return
+    const t = setTimeout(() => setDropNote(null), 4000)
+    return () => clearTimeout(t)
+  }, [dropNote])
+
   const addImageFile = useCallback(
     (f: File) => {
       if (!f.type.startsWith('image/')) return
-      if (f.size > 5 * 1024 * 1024) return
+      if (f.size > 5 * 1024 * 1024) {
+        setDropNote(`「${f.name}」${(f.size / 1024 / 1024).toFixed(1)}MB，超过单张 5MB 上限`)
+        return
+      }
       const key = draftKey
       const reader = new FileReader()
       reader.onload = () => {
         const url = String(reader.result)
         const m = /^data:([^;]+);base64,(.+)$/.exec(url)
-        if (!m) return
+        if (!m) {
+          setDropNote(`「${f.name}」读不出图片内容`)
+          return
+        }
         setAttsMap((prev) => {
           const cur = prev[key] ?? []
-          if (cur.length >= 4) return prev
+          if (cur.length >= 4) {
+            setDropNote('图片最多 4 张，先移除几张再加')
+            return prev
+          }
           return { ...prev, [key]: [...cur, { mediaType: m[1], data: m[2], preview: url }] }
         })
       }
+      reader.onerror = () => setDropNote(`「${f.name}」读取失败`)
       reader.readAsDataURL(f)
     },
     [draftKey]
   )
+
+  /**
+   * 外部拖入统一入口（#7）。图片走附件，其余**取绝对路径插进草稿**——
+   * agent 有 Read 工具，给它路径比塞内容更省 token，也不受 5MB 限制。
+   * 只改草稿，**不触发发送、不写任何文件**。
+   */
+  const addDroppedFiles = useCallback(
+    (files: File[]) => {
+      if (!files.length) return
+      const images = files.filter((f) => f.type.startsWith('image/'))
+      const others = files.filter((f) => !f.type.startsWith('image/'))
+      images.forEach(addImageFile)
+
+      const paths = others.map((f) => window.letscoding.pathForFile(f)).filter(Boolean)
+      const lost = others.length - paths.length
+      if (paths.length) {
+        setDrafts((d) => {
+          const cur = d[draftKey] ?? ''
+          const sep = cur && !cur.endsWith('\n') ? '\n' : ''
+          return { ...d, [draftKey]: `${cur}${sep}${paths.join('\n')}\n` }
+        })
+      }
+      if (lost > 0) setDropNote(`有 ${lost} 项拿不到本地路径（不是磁盘上的文件），已跳过`)
+      else if (paths.length) setDropNote(`已插入 ${paths.length} 个文件路径`)
+    },
+    [addImageFile, draftKey]
+  )
+
+  // window 级兜底：没有被任何元素接住的拖放，Chromium 会**导航到那个文件**，
+  // 应用外壳直接被替换。主进程的 will-navigate 是最后一道，这里是第一道——
+  // 拦在这儿用户连闪一下都不会有。
+  useEffect(() => {
+    const swallow = (e: DragEvent): void => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault()
+    }
+    window.addEventListener('dragover', swallow)
+    window.addEventListener('drop', swallow)
+    return () => {
+      window.removeEventListener('dragover', swallow)
+      window.removeEventListener('drop', swallow)
+    }
+  }, [])
   const removeAtt = (idx: number): void =>
     setAttsMap((prev) => ({ ...prev, [draftKey]: (prev[draftKey] ?? []).filter((_, j) => j !== idx) }))
 
@@ -942,7 +1004,36 @@ export default function App(): React.JSX.Element {
         />
       )}
 
-      <main className="main">
+      <main
+        className={`main${dragOver ? ' drag-over' : ''}`}
+        // 接收区放大到整个工作区（#7）：原先只有输入框那一小条能接，
+        // 拖到别处不但没反应，还会触发 Chromium 的默认导航。
+        onDragOver={(e) => {
+          if (!canCompose || !e.dataTransfer.types.includes('Files')) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'copy'
+          if (!dragOver) setDragOver(true)
+        }}
+        onDragLeave={(e) => {
+          // 只认真正离开 main 的那一次，不理会子元素之间的冒泡
+          if (e.currentTarget === e.target) setDragOver(false)
+        }}
+        onDrop={(e) => {
+          setDragOver(false)
+          if (!canCompose || !e.dataTransfer.types.includes('Files')) return
+          e.preventDefault()
+          addDroppedFiles(Array.from(e.dataTransfer.files))
+        }}
+      >
+        {dragOver && (
+          <div className="drop-veil">
+            <div className="drop-veil-in">
+              松开即可加入
+              <span>图片作为附件 · 其他文件插入路径</span>
+            </div>
+          </div>
+        )}
+        {dropNote && <div className="drop-note">{dropNote}</div>}
         {!active ? (
           <div className="empty">
             <div style={{ fontSize: 15 }}>选择一个会话，或新建一个</div>
@@ -1215,9 +1306,13 @@ export default function App(): React.JSX.Element {
                   if (canCompose) e.preventDefault()
                 }}
                 onDrop={(e) => {
+                  // 与工作区走同一入口——原先这里只吃图片、静默丢弃其余，
+                  // 两套行为会让「拖到哪儿」变成决定成败的隐藏变量（#7）
                   if (!canCompose) return
                   e.preventDefault()
-                  for (const f of Array.from(e.dataTransfer.files)) addImageFile(f)
+                  e.stopPropagation()
+                  setDragOver(false)
+                  addDroppedFiles(Array.from(e.dataTransfer.files))
                 }}
               >
                 {canCompose && atts.length > 0 && (
