@@ -90,6 +90,38 @@ else
   fail "G14 permission allow: allow branch must include updatedInput or SDK rejects it with ZodError (#5)"
 fi
 
+# G15 · 外部拖入护栏（issue #7）。三条各自独立、缺一功能就是坏的：
+# ① 导航护栏：Chromium 对**没被元素接住**的拖放，默认行为是导航到那个文件——
+#    应用外壳被 file:// 替换掉，preload 暴露的整套 API 跟着一个非受控页面走。
+#    这既是「拖进去没反应」的真因，也是安全红线。
+# ② 路径来源：Electron 32 起 File.path 已移除（本仓 electron 35），
+#    渲染层拿绝对路径的唯一正路是 preload 里的 webUtils.getPathForFile。
+#    渲染层若直接读 f.path，编译期不报错、运行期恒为 undefined —— 静默坏掉。
+# ③ 红线：拖入只改草稿，不得触发发送、不得写文件。
+DROP_OK=1
+grep -qE "webContents\.on\('will-navigate'" src/main/index.ts || DROP_OK=0
+#    注册了还得真拦：`e.preventDefault()` 泛匹配会被 before-quit 那处喂饱（私有线实测放行过），
+#    所以咬 will-navigate 分支里那一行的完整形态。
+grep -qF "if (!inShell) e.preventDefault()" src/main/index.ts || DROP_OK=0
+grep -qE "webContents\.setWindowOpenHandler\(" src/main/index.ts || DROP_OK=0
+grep -q "action: 'deny'" src/main/index.ts || DROP_OK=0
+#    剔掉注释再断言：**那行「唯一正路是 webUtils.getPathForFile」的注释曾把这条 gate 喂饱**
+#    ——函数体改空了它照样绿。断言只认真实调用形态。
+grep -vE '^\s*(\*|//|/\*)' src/preload/index.ts | grep -qF "return webUtils.getPathForFile(f)" || DROP_OK=0
+# 渲染层不许绕过 preload 自己读 File.path（Electron 32 起恒 undefined）
+grep -rqE "\.dataTransfer\.files\[[0-9]+\]\.path|\bf\.path\b|file\.path\b" src/renderer --include='*.tsx' --include='*.ts' && DROP_OK=0
+# 统一入口：两处 onDrop 都必须走 addDroppedFiles，不许一处只吃图片另一处全收
+test "$(grep -c "addDroppedFiles(Array.from(e.dataTransfer.files))" src/renderer/src/App.tsx)" = "2" || DROP_OK=0
+# 红线：拖入路径里不得出现发送动作。取**整个函数体**（awk 到闭合行），
+# 固定行窗（-A12）盖不住 21 行的函数体，私有线实测漏过注入在末尾的 send()。
+awk '/const addDroppedFiles = useCallback/,/^  \)$/' src/renderer/src/App.tsx \
+  | grep -qE "\bsend\(|sendMessage|submit\(" && DROP_OK=0
+if [ "$DROP_OK" -eq 1 ]; then
+  pass "G15 external drop: navigation fenced, paths via webUtils, draft-only"
+else
+  fail "G15 external drop: must fence will-navigate, take paths from webUtils (File.path is gone since Electron 32), and only touch the draft (#7)"
+fi
+
 # G3 · 无明文 key（D8 红线）：追踪文件中不得出现网关/API key 形态字符串
 if git grep -nE "sk-[A-Za-z0-9_-]{16,}" -- ':!*.lock' ':!package-lock.json' >/dev/null 2>&1; then
   fail "G3 secrets: plaintext key-like string found in tracked files"
