@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, protocol } from 'electron'
+import { app, BrowserWindow, dialog, protocol, shell } from 'electron'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -451,6 +451,23 @@ function createWindow(): void {
       })()
     })
   }
+
+  // 导航护栏（#7）。两个作用，缺一不可：
+  // ① 拖放：Chromium 对**没有被元素接住**的拖放，默认行为是导航到被拖的那个文件——
+  //    应用外壳直接被 `file:///…` 替换掉，用户看到的是「拖进去就没了」。
+  //    渲染层的 window 级 preventDefault 是第一道，这里是**兜底的那道**：
+  //    渲染层任何一处漏网（新面板、崩溃后的空文档）都还有它拦着。
+  // ② 安全：外壳被替换后，preload 暴露的整套 API 就跟着一个非受控页面走了。
+  //    一律不放行离开外壳的导航；新开窗口一律 deny，http(s) 外链交给系统浏览器。
+  win.webContents.on('will-navigate', (e, url) => {
+    const dev = process.env['ELECTRON_RENDERER_URL']
+    const inShell = dev ? url.startsWith(dev) : url.startsWith('file://')
+    if (!inShell) e.preventDefault()
+  })
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     void win.loadURL(process.env['ELECTRON_RENDERER_URL'])

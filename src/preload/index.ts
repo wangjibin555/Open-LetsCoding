@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webFrame } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import {
   Channels,
   type AppPingResult,
@@ -195,6 +195,19 @@ const api = {
       ipcRenderer.invoke(Channels.WhitelistAdd, { pattern }),
     whitelistRemove: (pattern: string): Promise<void> =>
       ipcRenderer.invoke(Channels.WhitelistRemove, { pattern })
+  },
+
+  /**
+   * 拖入文件的绝对路径（#7）。**Electron 32 起 `File.path` 已被移除**，
+   * 本仓 electron 35 —— 渲染层拿路径的唯一正路就是主世界的 `webUtils.getPathForFile`。
+   * 只读一个路径字符串，不碰文件内容、不做任何 IO；拿到路径后由用户决定要不要发给 agent。
+   */
+  pathForFile: (f: File): string => {
+    try {
+      return webUtils.getPathForFile(f)
+    } catch {
+      return '' // 非真实文件（如从网页拖来的虚拟文件）拿不到路径，交调用方按空串处理
+    }
   },
 
   settings: {
