@@ -68,6 +68,28 @@ else
   fail "G11 design preview: lcdesign scheme must serve default-src 'none' CSP and wire dz-restore (D12.3)"
 fi
 
+# G14 · 权限放行结果的 schema 必填项（issue #5）：SDK 的 PermissionResult 是个 union，
+# allow 分支**运行时必填** `updatedInput: record`（sdk.d.ts 标可选，与运行时不一致，以运行时为准）。
+# 少这个字段 → union 两条都不匹配 → `ZodError: expected record, received undefined`，
+# 用户点了「同意」工具照样执行不了。旧 CLI 有 falling-back 兜底，随 SDK 打包的 2.1.202 没有。
+# 值的正确性（原样回传、不改写入参）由 G4 vitest 打在返回对象上，此处只锁「没有第二条绕过工厂的路径」。
+PERM_OK=1
+# ① 唯一构造点存在
+grep -q "export function allowResult(" src/main/engine/permissionPolicy.ts || PERM_OK=0
+# ② 全仓生产代码里**每一处** `behavior: 'allow'` 都必须在同行或紧邻两行内带 updatedInput。
+#    计数式：出现次数 == 带 updatedInput 的次数。测试文件不算（它要构造反例）。
+ALLOW_N=$(grep -rn "behavior: 'allow'" src --include='*.ts' | grep -v '\.test\.ts:' | wc -l | tr -d ' ')
+WITH_N=$(grep -rn -A2 "behavior: 'allow'" src --include='*.ts' | grep -v '\.test\.ts[:-]' | grep -c "updatedInput")
+test "$ALLOW_N" = "$WITH_N" || PERM_OK=0
+# ③ sessions.ts 的放行路径必须走工厂，不许自己拼对象
+test "$(grep -c "allowResult(" src/main/engine/sessions.ts)" = "2" || PERM_OK=0
+grep -qE "resolve\(\{ *behavior: 'allow'" src/main/engine/sessions.ts && PERM_OK=0
+if [ "$PERM_OK" -eq 1 ]; then
+  pass "G14 permission allow: every allow result carries updatedInput"
+else
+  fail "G14 permission allow: allow branch must include updatedInput or SDK rejects it with ZodError (#5)"
+fi
+
 # G3 · 无明文 key（D8 红线）：追踪文件中不得出现网关/API key 形态字符串
 if git grep -nE "sk-[A-Za-z0-9_-]{16,}" -- ':!*.lock' ':!package-lock.json' >/dev/null 2>&1; then
   fail "G3 secrets: plaintext key-like string found in tracked files"
