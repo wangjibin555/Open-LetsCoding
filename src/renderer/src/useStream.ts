@@ -185,10 +185,27 @@ export function useSessionStream(activeHandle: string | null): {
     }
     return s
   }
-  // 仅活跃会话的变更需要重渲染；后台桶静默积累
-  const commit = (handle: string): void => {
-    if (handle === activeRef.current) bump((v) => v + 1)
-  }
+  // 仅活跃会话的变更需要重渲染；后台桶静默积累。
+  // ⚡ #12：流式期间 text_delta 逐 token 到达，原实现每条都同步 bump 一次——
+  // 一帧内可能触发十几次全量重渲染，而每次都要走完整棵消息树。
+  // 这里按帧合并：同一帧内的多次变更只重渲染一次，上限锁死在 60/s。
+  // 数据本身已写进 store.current（ref，非 state），合并的只是「通知」，不会丢事件。
+  const rafRef = useRef<number | null>(null)
+  const commit = useCallback((handle: string): void => {
+    if (handle !== activeRef.current) return
+    if (rafRef.current !== null) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      bump((v) => v + 1)
+    })
+  }, [])
+  // 卸载时清掉在途的帧回调，避免对已卸载组件 setState
+  useEffect(
+    () => () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    },
+    []
+  )
 
   useEffect(() => {
     const unsub = window.letscoding.session.onStream((e: StreamEventPayload) => {

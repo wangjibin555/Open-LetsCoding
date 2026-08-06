@@ -177,6 +177,24 @@ else
   fail "G17 ask-question: AskUserQuestion must be intercepted BEFORE shouldAutoAllow and answered via updatedInput (D18)"
 fi
 
+# G18 · 长会话流式性能红线（issue #12）。这三条**看不出功能差别**——回退了界面照样
+# 正确，只是长会话重新变卡，所以必须机器守。实测：512 条消息全量重解析 132ms，
+# 而流式期间每个 text_delta 都触发一次 → 主线程 132% 打满；修复后 0.5ms（267×）。
+PERF_OK=1
+# ① Markdown 必须 memo（值断言在 G4 vitest，打在导出对象的 $$typeof 上，不是 grep）
+grep -q "export default memo(MarkdownView)" src/renderer/src/Markdown.tsx || PERF_OK=0
+# ② **先于 ① 成立**：内联对象字面量会让 prop 身份每次都变，memo 永远比较不通过——
+#    这正是原实现的形态（components={{…}}），也是这次卡顿的直接放大器。
+grep -qE "remarkPlugins=\{\[|components=\{\{" src/renderer/src/Markdown.tsx && PERF_OK=0
+# ③ 流式通知按帧合并：一帧内多个 delta 只重渲染一次，上限锁死 60/s。
+grep -q "rafRef.current = requestAnimationFrame" src/renderer/src/useStream.ts || PERF_OK=0
+grep -qE "^\s*if \(handle === activeRef.current\) bump" src/renderer/src/useStream.ts && PERF_OK=0
+if [ "$PERF_OK" -eq 1 ]; then
+  pass "G18 flow perf: markdown memoized, stable props, stream commits coalesced per frame"
+else
+  fail "G18 flow perf: long sessions relapse into per-token full re-parse (#12)"
+fi
+
 # G3 · 无明文 key（D8 红线）：追踪文件中不得出现网关/API key 形态字符串
 if git grep -nE "sk-[A-Za-z0-9_-]{16,}" -- ':!*.lock' ':!package-lock.json' >/dev/null 2>&1; then
   fail "G3 secrets: plaintext key-like string found in tracked files"
