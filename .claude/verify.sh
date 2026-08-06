@@ -195,6 +195,37 @@ else
   fail "G18 flow perf: long sessions relapse into per-token full re-parse (#12)"
 fi
 
+# G19 · 超长单条消息的重解析预算（issue #14）。与 G18 同类：回退了界面照样正确，
+# 只是长消息重新卡住。实测（真 Chromium，短文本挂载→长到 L→稳态流式 3s 的主线程占用）：
+#   L=6k 19.3%→12.3% ／ 12k 35.4%→16.3% ／ 40k 90.3%→18.1%
+# 数值断言在 G4 vitest（TypeText.test.ts，打在 tickMsFor/revealStep 的真返回值上）；
+# 这里只守**形态**——那几条数值闸拦不住「把 tick 又冻回挂载时」这类改法。
+TT_OK=1
+TT_SRC="src/renderer/src/TypeText.tsx"
+# 剥注释后再判：解释历史的注释提到旧常量名不该算违规（本闸初版栽过这个）
+TT_CODE="$(sed 's://.*::' "$TT_SRC")"
+# ① 步进间隔取自**当前** text.length，而不是挂载时快照 —— #14 的根因就是后者
+printf '%s' "$TT_CODE" | grep -q "tickMsFor(text.length)" || TT_OK=0
+# ② useRef(...).current 的捕获式里不得再出现长度判据（冻结长度 = 复现 #14）
+printf '%s' "$TT_CODE" | grep -qE "useRef\([^)]*\.length[^)]*\)\.current" && TT_OK=0
+# ③ 定时器必须随档位重建，否则 tick 算了也用不上
+printf '%s' "$TT_CODE" | grep -q "\[done, tick\]" || TT_OK=0
+# ④ 反向闸不得复活：关掉动画后 Markdown 直接吃 text，而底层流以 ≤60Hz 换文本，
+#    比打字机的 42Hz 更勤 —— 12k 实测 47.6% vs 35.4%，「超长就不动画」是负优化
+printf '%s' "$TT_CODE" | grep -q "MAX_ANIMATE_CHARS" && TT_OK=0
+# ⑤ 数值闸本身不得被删：负向红线（≤4000 字逐帧不变）、预算、追平墙钟这三条打在
+#    tickMsFor/revealStep 的**真返回值**上，跑在 G4 的 vitest 里。这里只确认它们还在——
+#    否则上面四条形态闸绿着，值却可以被随便改。
+TT_TEST="src/renderer/src/TypeText.test.ts"
+for NEEDLE in "负向红线" "预算断言" "目的断言" "手段断言"; do
+  grep -q "$NEEDLE" "$TT_TEST" || TT_OK=0
+done
+if [ "$TT_OK" -eq 1 ]; then
+  pass "G19 typewriter budget: tick derives from current length, ≤4000 chars byte-identical"
+else
+  fail "G19 typewriter budget: long messages relapse into 42Hz full re-parse (#14)"
+fi
+
 # G3 · 无明文 key（D8 红线）：追踪文件中不得出现网关/API key 形态字符串
 if git grep -nE "sk-[A-Za-z0-9_-]{16,}" -- ':!*.lock' ':!package-lock.json' >/dev/null 2>&1; then
   fail "G3 secrets: plaintext key-like string found in tracked files"
